@@ -4,18 +4,13 @@ import org.titiplex.align.TokenAligner;
 import org.titiplex.io.ConlluWriter;
 import org.titiplex.io.DocxReader;
 import org.titiplex.io.YamlRuleLoader;
-import org.titiplex.model.ConlluSentence;
 import org.titiplex.pipeline.ConlluPipeline;
 import org.titiplex.pipeline.CorrectionPipeline;
 import org.titiplex.rules.RuleEngine;
 
-import java.io.BufferedWriter;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class Main {
     private Main() {
@@ -40,17 +35,15 @@ public final class Main {
 
         CorrectionPipeline correctionPipeline = new CorrectionPipeline(new TokenAligner(), ruleEngine);
         ConlluPipeline conlluPipeline = new ConlluPipeline();
-        List<ConlluSentence> sentences = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
 
         try (FileInputStream docIn = new FileInputStream(inputDocx.toFile())) {
             for (var rawBlock : docxReader.read(docIn)) {
                 var corrected = correctionPipeline.process(rawBlock);
-                sentences.add(conlluPipeline.toConllu(corrected));
+                sb.append(conlluPipeline.toEntry(corrected).toConlluString());
             }
         }
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputConllu.toFile()))) {
-            new ConlluWriter().write(sentences, writer);
-        }
+        new ConlluWriter().writeRaw(outputConllu, sb.toString());
     }
 }
