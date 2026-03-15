@@ -4,6 +4,7 @@ import org.titiplex.model.AlignedToken;
 import org.titiplex.model.CorrectedBlock;
 
 import java.util.List;
+import java.util.Locale;
 
 public final class AnnotationEngine {
     private final AnnotationConfig config;
@@ -21,13 +22,9 @@ public final class AnnotationEngine {
             if (token.chujSurface().isBlank() && token.glossSurface().isBlank()) continue;
             ConlluLine line = ConlluLine.basic(Integer.toString(id++), token.chujSurface().isBlank() ? token.glossSurface() : token.chujSurface());
             line.setMisc(token.glossSurface().isBlank() ? "_" : "Gloss=" + token.glossSurface());
-            for (String gloss : token.glossSegments()) {
-                String pos = config.glossMapper().resolvePos(gloss);
-                if (pos != null && "_".equals(line.upos())) line.setUpos(pos);
-                line.putAllFeats(config.glossMapper().resolveFeats(gloss), false);
-            }
+            applyGlossMap(token, line);
             applyAgreementHeuristics(token, line);
-            for (AnnotationRule rule : config.rules()) if (rule.matches(token)) rule.apply(line);
+            for (AnnotationRule rule : config.rules()) if (rule.matches(token)) rule.apply(line, token, config);
             if ("_".equals(line.upos())) line.setUpos(guessUpos(token));
             line.setLemma(lemmatizer.lemmaFor(token, line.upos()));
             if ("PUNCT".equals(line.upos())) line.setDeprel("punct");
@@ -36,12 +33,19 @@ public final class AnnotationEngine {
         return entry;
     }
 
+    private void applyGlossMap(AlignedToken token, ConlluLine line) {
+        for (String gloss : token.glossSegments()) {
+            String pos = config.glossMapper().resolvePos(gloss);
+            if (pos != null && "_".equals(line.upos())) line.setUpos(pos);
+            line.putAllFeats(config.glossMapper().resolveFeats(gloss), false);
+        }
+    }
 
     private void applyAgreementHeuristics(AlignedToken token, ConlluLine line) {
         String aPerson = null, bPerson = null;
         String aNum = "Sing", bNum = "Sing";
         for (String gloss : token.glossSegments()) {
-            String g = gloss.toUpperCase();
+            String g = gloss.toUpperCase(Locale.ROOT);
             if (g.matches("A[123](SG|PL)?")) {
                 aPerson = g.substring(1, 2);
                 if (g.endsWith("PL")) aNum = "Plur";
@@ -78,12 +82,13 @@ public final class AnnotationEngine {
         if (form.chars().allMatch(Character::isDigit)) return "NUM";
         if (form.length() == 1 && ".,;:!?()[]{}".contains(form)) return "PUNCT";
         for (String gloss : token.glossSegments()) {
-            String lower = gloss.toLowerCase();
-            if (lower.matches("a[123].*|b[123].*")) return "PRON";
+            String lower = gloss.toLowerCase(Locale.ROOT);
+            if (lower.matches("a[123].*|b[123].*")) return "VERB";
             if (List.of("adv", "adj", "noun", "verb", "prep", "pron", "punct", "num").contains(lower)) {
                 String pos = config.glossMapper().resolvePos(lower);
                 if (pos != null) return pos;
             }
+            if (lower.matches(".*(ar|er|ir)$")) return "VERB";
         }
         return "_";
     }

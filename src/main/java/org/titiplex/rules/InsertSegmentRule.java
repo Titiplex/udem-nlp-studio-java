@@ -25,14 +25,15 @@ public final class InsertSegmentRule implements CorrectionRule {
     @Override
     public void apply(RuleContext context) {
         for (int i = 0; i < context.size(); i++) {
-            if (!TokenPatternMatcher.matchesAt(context.alignedTokens(), i, spec)) continue;
-            AlignedToken tok = context.get(i);
+            int target = TokenPatternMatcher.resolveTargetIndex(context.alignedTokens(), i, spec);
+            if (target < 0) continue;
+            AlignedToken tok = context.get(target);
             List<String> segs = new ArrayList<>(tok.chujSegments().isEmpty() ? List.of(tok.chujSurface()) : tok.chujSegments());
             int idx = Math.max(0, Math.min(segs.size() - 1, tokenIndex - 1));
             String base = segs.get(idx);
             int pos = Math.max(0, Math.min(base.length(), position - 1));
             segs.set(idx, base.substring(0, pos) + segment + base.substring(pos));
-            context.replace(i, context.rebuildToken(segs, tok.glossSegments()));
+            context.replace(target, context.rebuildToken(segs, tok.glossSegments()));
         }
     }
 }
