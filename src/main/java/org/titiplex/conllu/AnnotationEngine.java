@@ -26,6 +26,7 @@ public final class AnnotationEngine {
                 if (pos != null && "_".equals(line.upos())) line.setUpos(pos);
                 line.putAllFeats(config.glossMapper().resolveFeats(gloss), false);
             }
+            applyAgreementHeuristics(token, line);
             for (AnnotationRule rule : config.rules()) if (rule.matches(token)) rule.apply(line);
             if ("_".equals(line.upos())) line.setUpos(guessUpos(token));
             line.setLemma(lemmatizer.lemmaFor(token, line.upos()));
@@ -33,6 +34,42 @@ public final class AnnotationEngine {
             entry.lines().add(line);
         }
         return entry;
+    }
+
+
+    private void applyAgreementHeuristics(AlignedToken token, ConlluLine line) {
+        String aPerson = null, bPerson = null;
+        String aNum = "Sing", bNum = "Sing";
+        for (String gloss : token.glossSegments()) {
+            String g = gloss.toUpperCase();
+            if (g.matches("A[123](SG|PL)?")) {
+                aPerson = g.substring(1, 2);
+                if (g.endsWith("PL")) aNum = "Plur";
+            }
+            if (g.matches("B[123](SG|PL)?")) {
+                bPerson = g.substring(1, 2);
+                if (g.endsWith("PL")) bNum = "Plur";
+            }
+        }
+        if (aPerson == null && bPerson == null) return;
+        line.setUpos("VERB");
+        if (aPerson != null && bPerson != null) {
+            line.putFeat("Pers[subj]", aPerson, false);
+            line.putFeat("Number[subj]", aNum, false);
+            line.putFeat("Pers[obj]", bPerson, false);
+            line.putFeat("Number[obj]", bNum, false);
+            line.putFeat("SubCat", "Trans", false);
+        } else if (bPerson != null) {
+            line.putFeat("Pers[subj]", bPerson, false);
+            line.putFeat("Number[subj]", bNum, false);
+            line.putFeat("SubCat", "Intrans", false);
+        } else {
+            line.putFeat("Pers[subj]", aPerson, false);
+            line.putFeat("Number[subj]", aNum, false);
+            line.putFeat("Pers[obj]", "3", false);
+            line.putFeat("Number[obj]", "Sing", false);
+            line.putFeat("SubCat", "Trans", false);
+        }
     }
 
     private String guessUpos(AlignedToken token) {

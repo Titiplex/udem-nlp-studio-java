@@ -41,6 +41,16 @@ public final class RuleYamlSupport {
         return value == null ? defaultValue : value.toString();
     }
 
+    public static int intValue(Object value, int defaultValue) {
+        if (value == null) return defaultValue;
+        if (value instanceof Number n) return n.intValue();
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
     public static boolean bool(Object value, boolean defaultValue) {
         if (value == null) return defaultValue;
         if (value instanceof Boolean b) return b;

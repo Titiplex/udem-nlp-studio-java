@@ -16,6 +16,10 @@ public final class RuleContext {
         return List.copyOf(alignedTokens);
     }
 
+    List<AlignedToken> alignedTokensMutable() {
+        return alignedTokens;
+    }
+
     public int size() {
         return alignedTokens.size();
     }
