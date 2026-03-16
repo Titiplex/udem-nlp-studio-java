@@ -3,25 +3,39 @@ package org.titiplex.conllu;
 import org.titiplex.rules.RuleYamlSupport;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Pattern;
 
 public final class AnnotationConfigLoader {
+    public AnnotationConfig load(Path yamlPath) throws IOException {
+        try (InputStream in = Files.newInputStream(yamlPath)) {
+            return load(in, yamlPath.getParent());
+        }
+    }
+
+    public AnnotationConfig load(InputStream inputStream) {
+        return load(inputStream, null);
+    }
 
     @SuppressWarnings("unchecked")
-    public AnnotationConfig load(InputStream inputStream) {
+    public AnnotationConfig load(InputStream inputStream, Path baseDir) {
         AnnotationConfig config = new AnnotationConfig();
         Yaml yaml = new Yaml();
         Map<String, Object> data = yaml.load(inputStream);
-        if (data == null) {
-            return config;
-        }
+        if (data == null) return config;
+
+        Map<String, Object> def = RuleYamlSupport.map(data.get("def"));
+        config.posDefinitions().addAll(RuleYamlSupport.stringList(def.get("pos")));
+        config.featDefinitions().addAll(RuleYamlSupport.stringList(def.get("feats")));
 
         Map<String, Object> glossMap = RuleYamlSupport.map(data.get("gloss_map"));
         for (Map<String, Object> pos : RuleYamlSupport.mapList(glossMap.get("pos"))) {
             for (var entry : pos.entrySet()) {
-                config.glossMapper().putPos(entry.getKey(), entry.getValue().toString());
+                if (entry.getValue() != null) config.glossMapper().putPos(entry.getKey(), entry.getValue().toString());
             }
         }
         for (Map<String, Object> feat : RuleYamlSupport.mapList(glossMap.get("feats"))) {
@@ -36,93 +50,119 @@ public final class AnnotationConfigLoader {
         }
 
         Map<String, Object> extractors = RuleYamlSupport.map(data.get("extractors"));
-        for (String name : extractors.keySet()) {
-            config.extractors().put(name, new AnnotationConfig.ExtractorDef(name));
+        for (var e : extractors.entrySet()) {
+            Map<String, Object> ex = RuleYamlSupport.map(e.getValue());
+            List<AnnotationConfig.RoutingRule> routingRules = new ArrayList<>();
+            Object routingObj = ex.get("routing");
+            if (routingObj instanceof List<?> list) {
+                for (Object item : list) {
+                    Map<String, Object> rr = RuleYamlSupport.map(item);
+                    routingRules.add(new AnnotationConfig.RoutingRule(
+                            RuleYamlSupport.string(rr.get("when"), ""),
+                            castStringMap(RuleYamlSupport.map(rr.get("set")))
+                    ));
+                }
+            }
+            config.extractors().put(e.getKey(), new AnnotationConfig.ExtractorDef(e.getKey(), routingRules));
         }
 
         List<Map<String, Object>> rules = (List<Map<String, Object>>) data.getOrDefault("rules", List.of());
         for (Map<String, Object> rawRule : rules) {
             Map<String, Object> match = RuleYamlSupport.map(rawRule.get("match"));
             String scope = RuleYamlSupport.string(rawRule.get("scope"), "token");
+            int priority = RuleYamlSupport.intValue(rawRule.get("priority"), 0);
 
             boolean onGloss = false;
             String glossSpecial = null;
             Pattern regex = null;
             Set<String> inList = new LinkedHashSet<>();
+            List<Map<String, String>> matchExtracts = new ArrayList<>();
+            List<String> require = new ArrayList<>();
+            List<String> forbid = new ArrayList<>();
 
+            Map<String, Object> effectiveMatch = match;
             if (match.containsKey("gloss")) {
                 onGloss = true;
                 Object glossObj = match.get("gloss");
-                if (glossObj instanceof String gs && "spanish_verbs".equalsIgnoreCase(gs)) {
-                    glossSpecial = gs;
+                if (glossObj instanceof String gs) {
+                    if ("spanish_verbs".equalsIgnoreCase(gs)) glossSpecial = gs;
+                    else inList.add(gs);
                 } else {
-                    Map<String, Object> glossMapMatch = RuleYamlSupport.map(glossObj);
-                    if (!glossMapMatch.isEmpty()) {
-                        inList.addAll(normalizeStringList(glossMapMatch.get("in_list")));
-                        String regexText = RuleYamlSupport.string(glossMapMatch.get("regex"), "");
-                        if (!regexText.isBlank()) {
-                            regex = Pattern.compile(regexText);
-                        }
-                        if (inList.contains("spanish_verbs")) {
-                            inList.remove("spanish_verbs");
-                            glossSpecial = "spanish_verbs";
-                        }
-                    } else {
-                        inList.addAll(normalizeStringList(glossObj));
-                    }
-                }
-            } else {
-                inList.addAll(normalizeStringList(match.get("in_list")));
-                String regexText = RuleYamlSupport.string(match.get("regex"), "");
-                if (!regexText.isBlank()) {
-                    regex = Pattern.compile(regexText);
+                    effectiveMatch = RuleYamlSupport.map(glossObj);
                 }
             }
+            inList.addAll(normalizeStringList(effectiveMatch.get("in_list"), baseDir));
+            String regexText = RuleYamlSupport.string(effectiveMatch.get("regex"), "");
+            if (!regexText.isBlank()) regex = Pattern.compile(regexText);
+            require.addAll(RuleYamlSupport.stringList(effectiveMatch.get("require")));
+            forbid.addAll(RuleYamlSupport.stringList(effectiveMatch.get("forbid")));
+            matchExtracts.addAll(extractList(effectiveMatch.get("extract")));
+            if (inList.remove("spanish_verbs")) glossSpecial = "spanish_verbs";
 
             Map<String, Object> set = RuleYamlSupport.map(rawRule.get("set"));
-            List<Map<String, String>> extractsList = new ArrayList<>();
-            Object extractObj = set.get("extract");
-            if (extractObj instanceof List<?> l) {
-                for (Object o : l) {
-                    extractsList.add(castStringMap(RuleYamlSupport.map(o)));
-                }
-            }
+            List<Map<String, String>> setExtracts = extractList(set.get("extract"));
 
             config.rules().add(new AnnotationRule(
                     RuleYamlSupport.string(rawRule.get("name"), ""),
                     scope,
+                    priority,
                     regex,
                     inList,
                     onGloss,
                     glossSpecial,
                     RuleYamlSupport.string(set.get("upos"), ""),
                     castStringMap(RuleYamlSupport.map(set.get("feats"))),
-                    extractsList
+                    castStringMap(RuleYamlSupport.map(set.get("feats_template"))),
+                    matchExtracts,
+                    setExtracts,
+                    require,
+                    forbid
             ));
         }
-
+        config.rules().sort(Comparator.comparingInt(AnnotationRule::priority).reversed());
         return config;
     }
 
-    private static Set<String> normalizeStringList(Object raw) {
-        Set<String> out = new LinkedHashSet<>();
-        if (raw == null) {
+    private static List<Map<String, String>> extractList(Object raw) {
+        List<Map<String, String>> out = new ArrayList<>();
+        if (raw instanceof Map<?, ?> m) {
+            out.add(castStringMap(RuleYamlSupport.map(m)));
             return out;
         }
-        if (raw instanceof String s) {
-            out.add(s);
-            return out;
+        if (raw instanceof List<?> list) {
+            for (Object o : list) out.add(castStringMap(RuleYamlSupport.map(o)));
         }
-        out.addAll(RuleYamlSupport.stringList(raw));
         return out;
     }
 
-    private Map<String, String> castStringMap(Map<String, Object> raw) {
+    private static Set<String> normalizeStringList(Object raw, Path baseDir) {
+        Set<String> out = new LinkedHashSet<>();
+        if (raw == null) return out;
+        if (raw instanceof String s) {
+            loadListOrLiteral(out, s, baseDir);
+            return out;
+        }
+        for (String s : RuleYamlSupport.stringList(raw)) loadListOrLiteral(out, s, baseDir);
+        return out;
+    }
+
+    private static void loadListOrLiteral(Set<String> out, String value, Path baseDir) {
+        if (value == null || value.isBlank()) return;
+        Path candidate = baseDir == null ? null : baseDir.resolve(value).normalize();
+        if (candidate != null && Files.exists(candidate)) {
+            try {
+                out.addAll(Files.readAllLines(candidate).stream().map(String::trim).filter(s -> !s.isBlank()).toList());
+                return;
+            } catch (IOException ignored) {
+            }
+        }
+        out.add(value);
+    }
+
+    private static Map<String, String> castStringMap(Map<String, Object> raw) {
         Map<String, String> out = new LinkedHashMap<>();
         for (var e : raw.entrySet()) {
-            if (e.getValue() != null) {
-                out.put(e.getKey(), e.getValue().toString());
-            }
+            if (e.getValue() != null) out.put(e.getKey(), e.getValue().toString());
         }
         return out;
     }

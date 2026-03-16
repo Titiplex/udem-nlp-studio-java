@@ -20,17 +20,13 @@ public final class SurfaceRewriteRule implements CorrectionRule {
         this.glossMap = glossMap;
     }
 
-    @Override
-    public String id() {
-        return id;
-    }
+    @Override public String id() { return id; }
 
     @Override
     public void apply(RuleContext context) {
         for (int i = 0; i < context.size(); i++) {
-            int target = TokenPatternMatcher.resolveTargetIndex(context.alignedTokens(), i, spec);
-            if (target < 0) continue;
-            AlignedToken tok = context.get(target);
+            if (!TokenPatternMatcher.matchesAt(context.alignedTokens(), i, spec)) continue;
+            AlignedToken tok = context.get(i);
             List<String> newChuj = new ArrayList<>(tok.chujSegments());
             for (int k = 0; k < newChuj.size(); k++) {
                 String repl = surfaceMap.get(norm(newChuj.get(k)));
@@ -43,13 +39,9 @@ public final class SurfaceRewriteRule implements CorrectionRule {
                 String repl = glossMap.get(norm(newGloss.get(k)));
                 if (repl != null) newGloss.set(k, repl);
             }
-            String glossSurfaceRepl = glossMap.get(norm(tok.glossSurface()));
-            if (glossSurfaceRepl != null) newGloss = List.of(glossSurfaceRepl.split("-"));
-            context.replace(target, context.rebuildToken(newChuj, newGloss));
+            context.replace(i, context.rebuildToken(newChuj, newGloss));
         }
     }
 
-    private String norm(String s) {
-        return s == null ? "" : s.toLowerCase(Locale.ROOT);
-    }
+    private String norm(String s) { return s == null ? "" : s.toLowerCase(Locale.ROOT); }
 }

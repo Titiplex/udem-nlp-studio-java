@@ -10,6 +10,8 @@ public final class AnnotationConfig {
     private final GlossMapper glossMapper = new GlossMapper();
     private final List<AnnotationRule> rules = new ArrayList<>();
     private final Map<String, ExtractorDef> extractors = new LinkedHashMap<>();
+    private final Set<String> posDefinitions = new LinkedHashSet<>();
+    private final Set<String> featDefinitions = new LinkedHashSet<>();
 
     public GlossMapper glossMapper() {
         return glossMapper;
@@ -23,45 +25,50 @@ public final class AnnotationConfig {
         return extractors;
     }
 
-    public void applyExtractor(String name, AlignedToken token, ConlluLine line) {
+    public Set<String> posDefinitions() {
+        return posDefinitions;
+    }
+
+    public Set<String> featDefinitions() {
+        return featDefinitions;
+    }
+
+    public void applyExtractor(String name, AlignedToken token, ConlluLine line, Map<String, Object> ctx) {
         ExtractorDef ex = extractors.get(name);
         if (ex == null) return;
-        Map<String, String> a = null;
-        Map<String, String> b = null;
-        Pattern pattern = Pattern.compile("^([AB])([123])(PL)?$", Pattern.CASE_INSENSITIVE);
+        Map<String, Object> intoMap = extractAgreement(token);
+        if (intoMap.isEmpty()) return;
+        ctx.put(name, intoMap);
+        if (line == null) return;
+        for (RoutingRule rr : ex.routing()) {
+            if (!ConditionEvaluator.evaluate(rr.when(), intoMap)) continue;
+            Map<String, String> feats = new LinkedHashMap<>();
+            for (var e : rr.set().entrySet()) {
+                String resolved = TemplateResolver.resolvePath(intoMap, e.getValue());
+                if (!resolved.isBlank()) feats.put(e.getKey(), resolved);
+            }
+            line.putAllFeats(feats, false);
+            break;
+        }
+    }
+
+    private Map<String, Object> extractAgreement(AlignedToken token) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        Pattern pattern = Pattern.compile("^([AB])([123])(SG|PL)?$", Pattern.CASE_INSENSITIVE);
         for (String gloss : token.glossSegments()) {
             Matcher m = pattern.matcher(gloss.toUpperCase(Locale.ROOT));
             if (!m.matches()) continue;
-            Map<String, String> values = new LinkedHashMap<>();
+            Map<String, Object> values = new LinkedHashMap<>();
             values.put("person", m.group(2));
-            values.put("number", m.group(3) != null ? "Plur" : "Sing");
-            if ("A".equals(m.group(1))) a = values;
-            else b = values;
+            values.put("number", "PL".equalsIgnoreCase(m.group(3)) ? "Plur" : "Sing");
+            out.put(m.group(1).toUpperCase(Locale.ROOT), values);
         }
-        if (a != null && b != null) {
-            setAgreement(line, a, b, "Trans");
-        } else if (b != null) {
-            line.putFeat("Pers[subj]", b.get("person"), false);
-            line.putFeat("Number[subj]", b.get("number"), false);
-            line.putFeat("SubCat", "Intrans", false);
-        } else if (a != null) {
-            line.putFeat("Pers[subj]", a.get("person"), false);
-            line.putFeat("Number[subj]", a.get("number"), false);
-            line.putFeat("Pers[obj]", "3", false);
-            line.putFeat("Number[obj]", "Sing", false);
-            line.putFeat("SubCat", "Trans", false);
-        }
-        if (a != null || b != null) line.setUpos("VERB");
+        return out;
     }
 
-    private void setAgreement(ConlluLine line, Map<String, String> a, Map<String, String> b, String subCat) {
-        line.putFeat("Pers[subj]", a.get("person"), false);
-        line.putFeat("Number[subj]", a.get("number"), false);
-        line.putFeat("Pers[obj]", b.get("person"), false);
-        line.putFeat("Number[obj]", b.get("number"), false);
-        line.putFeat("SubCat", subCat, false);
+    public record ExtractorDef(String name, List<RoutingRule> routing) {
     }
 
-    public record ExtractorDef(String name) {
+    public record RoutingRule(String when, Map<String, String> set) {
     }
 }
