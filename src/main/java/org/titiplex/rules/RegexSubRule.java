@@ -7,25 +7,32 @@ import java.util.regex.Pattern;
 
 public final class RegexSubRule implements CorrectionRule {
     private final String id;
-    private final RuleSelector selector;
+    private final MatchSpec spec;
     private final String scope;
     private final Pattern pattern;
     private final String replacement;
 
-    public RegexSubRule(String id, RuleSelector selector, String scope, Pattern pattern, String replacement) {
+    public RegexSubRule(String id, MatchSpec spec, String scope, Pattern pattern, String replacement) {
         this.id = id;
-        this.selector = selector;
+        this.spec = spec;
         this.scope = scope;
         this.pattern = pattern;
         this.replacement = replacement;
     }
 
-    @Override public String id() { return id; }
+    @Override
+    public String id() {
+        return id;
+    }
 
     @Override
     public void apply(RuleContext context) {
-        for (int index : selector.select(context.alignedTokens())) {
-            AlignedToken token = context.get(index);
+        for (int i = 0; i < context.size(); i++) {
+            int target = TokenPatternMatcher.resolveTargetIndex(context.alignedTokens(), i, spec);
+            if (target < 0) {
+                continue;
+            }
+            AlignedToken token = context.get(target);
             List<String> newChuj = token.chujSegments();
             List<String> newGloss = token.glossSegments();
             if ("chuj".equals(scope) || "both".equals(scope)) {
@@ -36,7 +43,7 @@ public final class RegexSubRule implements CorrectionRule {
                 String rewritten = pattern.matcher(String.join("-", token.glossSegments())).replaceAll(replacement);
                 newGloss = rewritten.isBlank() ? List.of() : List.of(rewritten.split("-"));
             }
-            context.replace(index, context.rebuildToken(newChuj, newGloss));
+            context.replace(target, context.rebuildToken(newChuj, newGloss));
         }
     }
 }

@@ -1,5 +1,7 @@
 package org.titiplex.align;
 
+import org.titiplex.io.InterlinearBlockParser;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -19,8 +21,8 @@ public final class Tokenizer {
         if (text == null || text.isBlank()) {
             return List.of();
         }
-
-        List<String> tokens = Arrays.stream(text.trim().split("\\s+"))
+        String normalized = InterlinearBlockParser.normalize(text);
+        List<String> tokens = Arrays.stream(normalized.trim().split("\\s+"))
                 .filter(s -> !s.isBlank())
                 .collect(Collectors.toCollection(ArrayList::new));
 
@@ -35,15 +37,13 @@ public final class Tokenizer {
         if (word == null || word.isBlank()) {
             return List.of();
         }
-        return Arrays.stream(word.split("-"))
+        return Arrays.stream(InterlinearBlockParser.normalize(word).split("-"))
                 .filter(s -> !s.isBlank())
                 .toList();
     }
 
     public static boolean isPunctuation(String token) {
-        return token != null
-                && !token.isBlank()
-                && token.chars().allMatch(c -> PUNCT.contains((char) c));
+        return token != null && !token.isBlank() && token.chars().allMatch(c -> PUNCT.contains((char) c));
     }
 
     public static int morphCount(String word) {
@@ -70,6 +70,10 @@ public final class Tokenizer {
         int cost = Math.abs(morphCount(left) - morphCount(right));
         if (left.isEmpty() != right.isEmpty()) {
             cost += 2;
+        }
+        String upperGloss = right.toUpperCase();
+        if (List.of("DET", "TOP", "ENF", "MODF", "CLF", "CLF.NUM", "DIR", "ADV", "PREP", "PRO3", "PRX", "PROX", "DIST").contains(upperGloss)) {
+            cost += 1;
         }
         return cost;
     }

@@ -12,20 +12,28 @@ import java.util.List;
 
 /**
  * Reader for plain-text interlinear blocks.
- * Expected default shape per block:
- * 1) Chuj line
- * 2) gloss line
- * 3) translation line
- * Blocks are separated by one or more blank lines.
+ * Supports both:
+ * - blank-line separated blocks with 3 lines
+ * - numbered examples with optional continuation lines
  */
 public final class RawTextReader implements BlockReader {
     @Override
     public List<RawBlock> read(InputStream inputStream) throws IOException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            List<String> lines = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lines.add(InterlinearBlockParser.normalize(line));
+            }
+
+            boolean hasNumberedExamples = lines.stream().anyMatch(InterlinearBlockParser::isNumberedStart);
+            if (hasNumberedExamples) {
+                return InterlinearBlockParser.parseNumberedLines(lines);
+            }
+
             List<RawBlock> out = new ArrayList<>();
             List<String> current = new ArrayList<>();
             int id = 1;
-            String line;
             while ((line = reader.readLine()) != null) {
                 String trimmed = line.trim();
                 if (trimmed.isEmpty()) {
@@ -45,7 +53,7 @@ public final class RawTextReader implements BlockReader {
     }
 
     private RawBlock toBlock(int id, List<String> lines) {
-        String chuj = lines.size() > 0 ? lines.get(0) : "";
+        String chuj = !lines.isEmpty() ? lines.get(0) : "";
         String gloss = lines.size() > 1 ? lines.get(1) : "";
         String translation = lines.size() > 2 ? String.join(" ", lines.subList(2, lines.size())) : "";
         return new RawBlock(id, chuj, gloss, translation);

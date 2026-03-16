@@ -24,17 +24,29 @@ public final class DeletePartsRule implements CorrectionRule {
     public void apply(RuleContext context) {
         for (int i = 0; i < context.size(); i++) {
             AlignedToken tok = context.get(i);
-            if (tok.chujSegments().isEmpty()) continue;
             List<String> newChuj = new ArrayList<>();
             List<String> newGloss = new ArrayList<>();
-            for (int idx = 0; idx < tok.chujSegments().size(); idx++) {
-                String ch = tok.chujSegments().get(idx);
-                if (parts.contains(ch) && tok.chujSegments().size() > 1) continue;
-                newChuj.add(ch);
-                if (idx < tok.glossSegments().size()) newGloss.add(tok.glossSegments().get(idx));
+            int max = Math.max(tok.chujSegments().size(), tok.glossSegments().size());
+            for (int idx = 0; idx < max; idx++) {
+                String ch = idx < tok.chujSegments().size() ? tok.chujSegments().get(idx) : null;
+                String gl = idx < tok.glossSegments().size() ? tok.glossSegments().get(idx) : null;
+
+                boolean dropCh = ch != null && parts.contains(ch);
+                boolean dropGl = gl != null && parts.contains(gl);
+                if (!dropCh && ch != null && !ch.isBlank()) {
+                    newChuj.add(ch);
+                }
+                if (!dropGl && !dropCh && gl != null && !gl.isBlank()) {
+                    newGloss.add(gl);
+                }
+            }
+            if (newChuj.equals(tok.chujSegments()) && newGloss.equals(tok.glossSegments())) {
+                continue;
             }
             context.replace(i, context.rebuildToken(newChuj, newGloss));
-            if (newChuj.isEmpty() && !newGloss.isEmpty()) context.shiftRightGloss(i);
+            if (newChuj.isEmpty() && !newGloss.isEmpty()) {
+                context.shiftRightGloss(i);
+            }
         }
     }
 }

@@ -23,19 +23,31 @@ public final class DeleteCharsRule implements CorrectionRule {
     public void apply(RuleContext context) {
         for (int i = 0; i < context.size(); i++) {
             AlignedToken tok = context.get(i);
-            if (tok.chujSegments().isEmpty()) continue;
-            List<String> newChuj = new ArrayList<>();
-            List<String> newGloss = new ArrayList<>();
-            for (int idx = 0; idx < tok.chujSegments().size(); idx++) {
-                String cleaned = tok.chujSegments().get(idx);
-                for (String c : chars) cleaned = cleaned.replace(c, "");
-                if (cleaned.isEmpty()) continue;
-                newChuj.add(cleaned);
-                if (idx < tok.glossSegments().size()) newGloss.add(tok.glossSegments().get(idx));
+            List<String> newChuj = cleanList(tok.chujSegments());
+            List<String> newGloss = cleanList(tok.glossSegments());
+
+            if (newChuj.equals(tok.chujSegments()) && newGloss.equals(tok.glossSegments())) {
+                continue;
             }
-            if (newGloss.isEmpty()) newGloss = new ArrayList<>(tok.glossSegments());
+
             context.replace(i, context.rebuildToken(newChuj, newGloss));
-            if (newChuj.isEmpty() && !newGloss.isEmpty()) context.shiftRightGloss(i);
+            if (newChuj.isEmpty() && !newGloss.isEmpty()) {
+                context.shiftRightGloss(i);
+            }
         }
+    }
+
+    private List<String> cleanList(List<String> parts) {
+        List<String> out = new ArrayList<>();
+        for (String part : parts) {
+            String cleaned = part;
+            for (String c : chars) {
+                cleaned = cleaned.replace(c, "");
+            }
+            if (!cleaned.isBlank()) {
+                out.add(cleaned);
+            }
+        }
+        return out;
     }
 }
