@@ -9,14 +9,20 @@ import java.util.List;
 public final class TokenAligner {
     private final int gapCostChuj;
     private final int gapCostGloss;
+    private final AlignmentTieBreakStrategy tieBreakStrategy;
 
     public TokenAligner() {
-        this(2, 2);
+        this(2, 2, AlignmentTieBreakStrategy.GLOSS_GAP_FIRST);
     }
 
     public TokenAligner(int gapCostChuj, int gapCostGloss) {
+        this(gapCostChuj, gapCostGloss, AlignmentTieBreakStrategy.GLOSS_GAP_FIRST);
+    }
+
+    public TokenAligner(int gapCostChuj, int gapCostGloss, AlignmentTieBreakStrategy tieBreakStrategy) {
         this.gapCostChuj = gapCostChuj;
         this.gapCostGloss = gapCostGloss;
+        this.tieBreakStrategy = tieBreakStrategy;
     }
 
     public List<AlignedToken> align(List<String> chujWords, List<String> glossWords) {
@@ -41,21 +47,8 @@ public final class TokenAligner {
                 int deleteGlossCost = dp[i - 1][j] + gapCostChuj;
                 int insertGlossCost = dp[i][j - 1] + gapCostGloss;
 
-                int best = Math.min(matchCost, Math.min(deleteGlossCost, insertGlossCost));
-                dp[i][j] = best;
-
-                // Better tie-break:
-                // prefer MATCH only if strictly better,
-                // otherwise prefer preserving unmatched gloss/chuj explicitly.
-                if (matchCost < insertGlossCost && matchCost < deleteGlossCost) {
-                    back[i][j] = new AlignmentStep(i - 1, j - 1, AlignmentStep.StepType.MATCH);
-                } else if (insertGlossCost <= deleteGlossCost && insertGlossCost <= matchCost) {
-                    back[i][j] = new AlignmentStep(i, j - 1, AlignmentStep.StepType.INSERT_GLOSS);
-                } else if (deleteGlossCost <= insertGlossCost && deleteGlossCost <= matchCost) {
-                    back[i][j] = new AlignmentStep(i - 1, j, AlignmentStep.StepType.DELETE_GLOSS);
-                } else {
-                    back[i][j] = new AlignmentStep(i - 1, j - 1, AlignmentStep.StepType.MATCH);
-                }
+                dp[i][j] = Math.min(matchCost, Math.min(deleteGlossCost, insertGlossCost));
+                back[i][j] = chooseBestStep(i, j, matchCost, deleteGlossCost, insertGlossCost);
             }
         }
 
@@ -105,5 +98,49 @@ public final class TokenAligner {
 
         Collections.reverse(aligned);
         return aligned;
+    }
+
+    private AlignmentStep chooseBestStep(int i, int j, int matchCost, int deleteGlossCost, int insertGlossCost) {
+        int best = Math.min(matchCost, Math.min(deleteGlossCost, insertGlossCost));
+
+        List<AlignmentStep.StepType> priority = switch (tieBreakStrategy) {
+            case MATCH_FIRST -> List.of(
+                    AlignmentStep.StepType.MATCH,
+                    AlignmentStep.StepType.INSERT_GLOSS,
+                    AlignmentStep.StepType.DELETE_GLOSS
+            );
+            case GLOSS_GAP_FIRST -> List.of(
+                    AlignmentStep.StepType.INSERT_GLOSS,
+                    AlignmentStep.StepType.MATCH,
+                    AlignmentStep.StepType.DELETE_GLOSS
+            );
+            case CHUJ_GAP_FIRST -> List.of(
+                    AlignmentStep.StepType.DELETE_GLOSS,
+                    AlignmentStep.StepType.MATCH,
+                    AlignmentStep.StepType.INSERT_GLOSS
+            );
+        };
+
+        for (AlignmentStep.StepType type : priority) {
+            switch (type) {
+                case MATCH -> {
+                    if (matchCost == best) {
+                        return new AlignmentStep(i - 1, j - 1, AlignmentStep.StepType.MATCH);
+                    }
+                }
+                case DELETE_GLOSS -> {
+                    if (deleteGlossCost == best) {
+                        return new AlignmentStep(i - 1, j, AlignmentStep.StepType.DELETE_GLOSS);
+                    }
+                }
+                case INSERT_GLOSS -> {
+                    if (insertGlossCost == best) {
+                        return new AlignmentStep(i, j - 1, AlignmentStep.StepType.INSERT_GLOSS);
+                    }
+                }
+            }
+        }
+
+        throw new IllegalStateException("No valid alignment step found.");
     }
 }

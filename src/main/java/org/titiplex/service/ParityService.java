@@ -50,7 +50,7 @@ public final class ParityService {
         ConlluPipeline pipeline = new ConlluPipeline(annotationConfig);
         StringBuilder sb = new StringBuilder();
         for (CorrectionEntry entry : correct(in)) {
-            sb.append(pipeline.toEntry(entry.corrected()).toConlluString());
+            sb.append(pipeline.toEntry(entry.corrected()).toConlluString()).append("\n");
         }
         new ConlluWriter().writeRaw(outConllu, sb.toString());
     }

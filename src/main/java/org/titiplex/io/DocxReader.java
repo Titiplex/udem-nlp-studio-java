@@ -10,41 +10,72 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class DocxReader implements BlockReader {
+
     @Override
     public List<RawBlock> read(InputStream inputStream) throws IOException {
         try (XWPFDocument document = new XWPFDocument(inputStream)) {
-            List<String> nonBlankLines = new ArrayList<>();
+            List<RawBlock> blocks = new ArrayList<>();
+            List<String> current = new ArrayList<>();
+            boolean inBlock = false;
+            int id = 1;
+
             for (XWPFParagraph paragraph : document.getParagraphs()) {
                 String text = paragraph.getText();
-                if (text != null && !text.isBlank()) {
-                    nonBlankLines.add(text.trim());
+                text = text == null ? "" : text.trim();
+
+                if (inBlock && text.isEmpty()) {
+                    RawBlock block = flushBlock(id++, current);
+                    if (block != null) {
+                        blocks.add(block);
+                    }
+                    current.clear();
+                    inBlock = false;
+                    continue;
+                }
+
+                if (!inBlock && !text.isEmpty() && Character.isDigit(text.charAt(0))) {
+                    inBlock = true;
+                }
+
+                if (inBlock) {
+                    current.add(text);
                 }
             }
 
-            List<RawBlock> blocks = new ArrayList<>();
-            int id = 1;
-            for (int i = 0; i < nonBlankLines.size(); ) {
-                String chuj = nonBlankLines.get(i++);
-                String gloss = i < nonBlankLines.size() ? nonBlankLines.get(i++) : "";
-                String translation = i < nonBlankLines.size() ? nonBlankLines.get(i++) : "";
-
-                // absorb extra translation continuation line if the next line clearly is not a gloss
-                if (i < nonBlankLines.size() && !looksLikeGlossLine(nonBlankLines.get(i)) && !looksLikeChujLine(nonBlankLines.get(i))) {
-                    translation = translation + " " + nonBlankLines.get(i++);
+            if (inBlock && !current.isEmpty()) {
+                RawBlock block = flushBlock(id, current);
+                if (block != null) {
+                    blocks.add(block);
                 }
-                blocks.add(new RawBlock(id++, chuj, gloss, translation.trim()));
             }
+
             return blocks;
         }
     }
 
-    private boolean looksLikeGlossLine(String line) {
-        if (line == null || line.isBlank()) return false;
-        return line.contains("-") || line.matches(".*\\b(A[123]|B[123]|PL|SG|PFV|IPFV|PROG|VT|VI)\\b.*");
-    }
+    private RawBlock flushBlock(int id, List<String> lines) {
+        if (lines.isEmpty()) {
+            return null;
+        }
 
-    private boolean looksLikeChujLine(String line) {
-        if (line == null || line.isBlank()) return false;
-        return !looksLikeGlossLine(line) && line.matches(".*[a-zA-Záéíóúàèìòù'’].*");
+        String translation = lines.getLast().trim();
+
+        StringBuilder chuj = new StringBuilder();
+        StringBuilder gloss = new StringBuilder();
+
+        for (int i = 0; i < lines.size() - 1; i++) {
+            String line = lines.get(i).trim();
+            if (line.isEmpty()) continue;
+
+            if (i % 2 == 0) {
+                if (!chuj.isEmpty()) chuj.append(' ');
+                chuj.append(line);
+            } else {
+                if (!gloss.isEmpty()) gloss.append(' ');
+                gloss.append(line);
+            }
+        }
+
+        return new RawBlock(id, chuj.toString(), gloss.toString(), translation);
     }
 }
