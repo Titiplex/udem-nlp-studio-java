@@ -4,22 +4,33 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TokenizerTest {
+
     @Test
-    void tokenizeLineDropsLeadingId() {
-        assertEquals(List.of("ha", "tin"), Tokenizer.tokenizeLine("1 ha tin", true));
+    void tokenizeLineDropsLeadingNumericIdWhenRequested() {
+        List<String> tokens = Tokenizer.tokenizeLine("12 ixim-na winh", true);
+        assertEquals(List.of("ixim-na", "winh"), tokens);
+    }
+
+    @Test
+    void tokenizeLineKeepsLeadingIdWhenNotRequested() {
+        List<String> tokens = Tokenizer.tokenizeLine("12 ixim-na winh", false);
+        assertEquals(List.of("12", "ixim-na", "winh"), tokens);
     }
 
     @Test
     void tokenizeWordSplitsOnHyphen() {
-        assertEquals(List.of("ek'", "nak", "in"), Tokenizer.tokenizeWord("ek'-nak-in"));
+        assertEquals(List.of("ixim", "na"), Tokenizer.tokenizeWord("ixim-na"));
     }
 
     @Test
-    void punctuationDetectionWorks() {
+    void punctuationAndPairCostBehaveAsExpected() {
         assertTrue(Tokenizer.isPunctuation("."));
+        assertFalse(Tokenizer.isPunctuation("ixim"));
+        assertEquals(0, Tokenizer.pairCost(".", "."));
+        assertTrue(Tokenizer.pairCost("ixim-na", "NOUN") > 0);
+        assertTrue(Tokenizer.pairCost(".", "NOUN") >= 3);
     }
 }

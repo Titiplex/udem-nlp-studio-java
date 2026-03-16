@@ -9,16 +9,34 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SuppressWarnings("SequencedCollectionMethodCanBeUsed")
 class TokenAlignerTest {
+
+    private final TokenAligner aligner = new TokenAligner();
+
     @Test
-    void alignerKeepsSimplePairs() {
-        TokenAligner aligner = new TokenAligner();
+    void alignsTokensInOrderForSimpleSentence() {
         List<AlignedToken> aligned = aligner.align(
-                List.of("ha", "hin", "tik"),
-                List.of("APV", "B1", "PRX")
+                List.of("ixim-na", "winh"),
+                List.of("NOUN-DET", "man")
         );
 
-        assertEquals(3, aligned.size());
-        assertEquals("ha", aligned.get(0).chujSurface());
-        assertEquals("APV", aligned.get(0).glossSurface());
+        assertEquals(2, aligned.size());
+        assertEquals("ixim-na", aligned.get(0).chujSurface());
+        assertEquals("NOUN-DET", aligned.get(0).glossSurface());
+        assertEquals(List.of("ixim", "na"), aligned.get(0).chujSegments());
+        assertEquals(List.of("NOUN", "DET"), aligned.get(0).glossSegments());
+    }
+
+    @Test
+    void preservesUnmatchedGlossAsGlossOnlyToken() {
+        List<AlignedToken> aligned = aligner.align(
+                List.of("ixim"),
+                List.of("NOUN", "DET")
+        );
+
+        assertEquals(2, aligned.size());
+        assertEquals("ixim", aligned.get(0).chujSurface());
+        assertEquals("NOUN", aligned.get(0).glossSurface());
+        assertEquals("", aligned.get(1).chujSurface());
+        assertEquals("DET", aligned.get(1).glossSurface());
     }
 }

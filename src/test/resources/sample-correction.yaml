@@ -1,0 +1,11 @@
+rules:
+  - id: strip_apostrophe
+    rewrite:
+      delete:
+        type: chars
+        chars: [ "'" ]
+  - id: normalize_vi
+    rewrite:
+      gloss:
+        before: [ vi, intr ]
+        after: [ VERB ]
