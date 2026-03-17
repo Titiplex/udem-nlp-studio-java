@@ -13,7 +13,6 @@ public final class TokenPatternMatcher {
         return resolveTargetIndex(tokens, i, spec, context) >= 0;
     }
 
-
     public static int resolveTargetIndex(List<AlignedToken> tokens, int i, MatchSpec spec, RuleContext context) {
         if (i < 0 || i >= tokens.size()) return -1;
         if (!basicMatch(tokens, i, spec, context)) return -1;
@@ -85,17 +84,6 @@ public final class TokenPatternMatcher {
             if (!eq(tokens.get(i + k).chujSurface(), expected)) return false;
         }
         return true;
-    }
-
-    private static boolean hasSpanishVerb(AlignedToken t) {
-        for (String g : t.glossSegments()) {
-            String lower = norm(g);
-            if (lower.matches(".*(ar|er|ir)$")) return true;
-            if (!g.equals(lower)) continue;
-            if (List.of("estar", "ser", "ir", "venir", "hacer", "decir", "dar", "ver", "poder", "tener", "regresar", "existir", "exist").contains(lower))
-                return true;
-        }
-        return false;
     }
 
     private static boolean startsWithVowel(String s) {

@@ -15,7 +15,7 @@ public final class AnnotationRule {
     private final Pattern regex;
     private final Set<String> inList;
     private final boolean onGloss;
-    private final String glossSpecial;
+    private final String lexiconRef;
     private final String upos;
     private final Map<String, String> feats;
     private final Map<String, String> featsTemplate;
@@ -31,7 +31,7 @@ public final class AnnotationRule {
             Pattern regex,
             Set<String> inList,
             boolean onGloss,
-            String glossSpecial,
+            String lexiconRef,
             String upos,
             Map<String, String> feats,
             Map<String, String> featsTemplate,
@@ -46,7 +46,7 @@ public final class AnnotationRule {
         this.regex = regex;
         this.inList = inList == null ? Set.of() : Set.copyOf(inList);
         this.onGloss = onGloss;
-        this.glossSpecial = glossSpecial;
+        this.lexiconRef = lexiconRef;
         this.upos = upos == null ? "" : upos;
         this.feats = feats == null ? Map.of() : Map.copyOf(feats);
         this.featsTemplate = featsTemplate == null ? Map.of() : Map.copyOf(featsTemplate);
@@ -68,7 +68,16 @@ public final class AnnotationRule {
         for (String key : forbid) {
             if (!TemplateResolver.resolvePath(ctx, key).isBlank()) return false;
         }
-        if ("spanish_verbs".equalsIgnoreCase(glossSpecial) && !hasSpanishVerb(tok)) return false;
+        if (!lexiconRef.isBlank()) {
+            boolean matched = false;
+            for (String g : tok.glossSegments()) {
+                if (config.lexiconRegistry().contains(lexiconRef, g)) {
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) return false;
+        }
 
         List<String> parts = onGloss ? tok.glossSegments() : tok.chujSegments();
         String surface = onGloss ? tok.glossSurface() : tok.chujSurface();
@@ -77,14 +86,14 @@ public final class AnnotationRule {
             for (String part : parts) {
                 if (matchesValue(part)) return true;
             }
-            return regex == null && inList.isEmpty() && glossSpecial == null && !matchExtracts.isEmpty();
+            return regex == null && inList.isEmpty() && lexiconRef == null && !matchExtracts.isEmpty();
         }
 
         if (matchesValue(surface)) return true;
         for (String part : parts) {
             if (matchesValue(part)) return true;
         }
-        return regex == null && inList.isEmpty() && (glossSpecial != null || !matchExtracts.isEmpty() || !require.isEmpty());
+        return regex == null && inList.isEmpty() && (lexiconRef != null || !matchExtracts.isEmpty() || !require.isEmpty());
     }
 
     private boolean matchesValue(String value) {
@@ -121,10 +130,4 @@ public final class AnnotationRule {
         return name;
     }
 
-    private boolean hasSpanishVerb(AlignedToken tok) {
-        for (String g : tok.glossSegments()) {
-            if (SpanishLexicon.isSpanishVerb(g)) return true;
-        }
-        return false;
-    }
 }

@@ -44,8 +44,14 @@ public final class DeletePartsRule implements CorrectionRule {
                 continue;
             }
             context.replace(i, context.rebuildToken(newChuj, newGloss));
-            if (newChuj.isEmpty() && !newGloss.isEmpty()) {
-                context.shiftRightGloss(i);
+            if (newChuj.isEmpty() && !newGloss.isEmpty() && i < context.size() - 1) {
+                // Move orphaned glosses to the next token
+                AlignedToken next = context.get(i + 1);
+                List<String> mergedGloss = new ArrayList<>(newGloss);
+                mergedGloss.addAll(next.glossSegments());
+                context.replace(i + 1, context.rebuildToken(next.chujSegments(), mergedGloss));
+                // Clear the current token's glosses since they've been moved
+                context.replace(i, context.rebuildToken(newChuj, List.of()));
             }
         }
     }

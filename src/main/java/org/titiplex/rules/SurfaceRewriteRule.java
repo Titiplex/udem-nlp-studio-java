@@ -31,7 +31,7 @@ public final class SurfaceRewriteRule implements CorrectionRule {
     @Override
     public void apply(RuleContext context) {
         for (int i = 0; i < context.size(); i++) {
-            if (!TokenPatternMatcher.matchesAt(context.alignedTokens(), i, spec)) {
+            if (!TokenPatternMatcher.matchesAt(context.alignedTokens(), i, spec, context)) {
                 continue;
             }
 

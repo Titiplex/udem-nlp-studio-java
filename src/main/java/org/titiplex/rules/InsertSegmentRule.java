@@ -25,7 +25,7 @@ public final class InsertSegmentRule implements CorrectionRule {
     @Override
     public void apply(RuleContext context) {
         for (int i = 0; i < context.size(); i++) {
-            int target = TokenPatternMatcher.resolveTargetIndex(context.alignedTokens(), i, spec);
+            int target = TokenPatternMatcher.resolveTargetIndex(context.alignedTokens(), i, spec, context);
             if (target < 0) continue;
             AlignedToken tok = context.get(target);
             List<String> segs = new ArrayList<>(tok.chujSegments().isEmpty() ? List.of(tok.chujSurface()) : tok.chujSegments());

@@ -98,6 +98,9 @@ public final class AnnotationConfigLoader {
                     effectiveMatch = RuleYamlSupport.map(glossObj);
                 }
             }
+            // Backward-compatible:
+            // - old configs may still use in_list
+            // - new configs should use in_lexicon
             inList.addAll(normalizeStringList(effectiveMatch.get("in_list"), baseDir));
             String regexText = RuleYamlSupport.string(effectiveMatch.get("regex"), "");
             if (!regexText.isBlank()) regex = Pattern.compile(regexText);
@@ -184,7 +187,10 @@ public final class AnnotationConfigLoader {
         Map<String, Object> number = RuleYamlSupport.map(values.get("number"));
         String suffix = RuleYamlSupport.string(number.get("suffix"), "PL");
 
-        String regex = "^(?<series>(" + seriesAlt + "))(?<person>(" + personAlt + "))(?<number>" + suffix + ")?$";
+        String regex =
+                "^(?<series>(" + seriesAlt + "))" +
+                        "(?<person>(" + personAlt + "))" +
+                        "(?<number>" + Pattern.quote(suffix) + ")?$";
         return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
 
