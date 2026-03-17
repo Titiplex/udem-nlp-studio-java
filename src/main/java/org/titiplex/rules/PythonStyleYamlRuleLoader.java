@@ -194,6 +194,23 @@ public final class PythonStyleYamlRuleLoader {
         if (split.isEmpty()) return;
 
         String type = RuleYamlSupport.string(split.get("type"), "");
+
+        if ("suffix_with_final_gloss".equalsIgnoreCase(type)) {
+            List<String> suffixes = RuleYamlSupport.stringList(
+                    split.containsKey("suffixes") ? split.get("suffixes") : split.get("tokens")
+            );
+            Map<String, Object> glossLastMatch = RuleYamlSupport.map(split.get("gloss_last_match"));
+            List<String> startsWith = RuleYamlSupport.stringList(glossLastMatch.get("starts_with"));
+
+            out.add(new SplitSuffixWithFinalGlossRule(
+                    id + ":split_suffix_with_final_gloss",
+                    spec,
+                    suffixes,
+                    startsWith
+            ));
+            return;
+        }
+
         String glossPlacement = RuleYamlSupport.string(split.get("gloss_placement"), "right");
 
         if ("suffix".equalsIgnoreCase(type) || "end".equalsIgnoreCase(type)) {
