@@ -58,8 +58,8 @@ rules:
         - type: scan_agreement
           extractor: agreement_verbs
           into: ab
-    feats_template:
-      Pers[subj]: "{ab.A.person}"
-      Number[subj]: "{ab.A.number}"
-      Pers[obj]: "{ab.B.person}"
-      Number[obj]: "{ab.B.number}"
+      feats_template:
+        Pers[subj]: "{ab.A.person}"
+        Number[subj]: "{ab.A.number}"
+        Pers[obj]: "{ab.B.person}"
+        Number[obj]: "{ab.B.number}"
