@@ -278,24 +278,23 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
-<!--                        <version>3.3.0</version>-->
+                        <version>3.3.0</version>
                         <executions>
                             <execution>
-                                <id>prepare-jpackage-layout</id>
+                                <id>prepare-jpackage-layout-windows</id>
                                 <phase>package</phase>
                                 <goals>
                                     <goal>exec</goal>
                                 </goals>
                                 <configuration>
+                                    <skip>${!os.detected.name.startsWith('windows')}</skip>
                                     <executable>cmd</executable>
                                     <arguments>
                                         <argument>/c</argument>
                                         <argument>
-                                            if not exist "${project.build.directory}\jpackage\input" mkdir
-                                            "${project.build.directory}\jpackage\input" &amp;&amp;
-                                            copy /Y
-                                            "${project.build.directory}\${project.artifactId}-${project.version}-all.jar"
-                                            "${project.build.directory}\jpackage\input\"
+                                            if not exist "${project.build.directory}\jpackage\input" mkdir "${project.build.directory}\jpackage\input" &amp;&amp;
+                                            if not exist "${project.build.directory}\jpackage\input\lib" mkdir "${project.build.directory}\jpackage\input\lib" &amp;&amp;
+                                            copy /Y "${project.build.directory}\${project.artifactId}-${project.version}-all.jar" "${project.build.directory}\jpackage\input\"
                                         </argument>
                                     </arguments>
                                 </configuration>

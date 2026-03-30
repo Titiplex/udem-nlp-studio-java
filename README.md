@@ -26,9 +26,11 @@ It will generate a file `output.conllu`.
 cd frontend
 npm install
 npm run build
+```
 
-mvn clean package
-cd ..
+Dev run :
+```bash
+mvn -pl app -am clean package
 mvn -pl app -am javafx:run
 ```
 
@@ -38,3 +40,7 @@ If front already built : ``mvn -pl app -am -Dskip.frontend=true javafx:run``
 ## Production
 
 ``mvn -pl app -am -Pdesktop-prod clean package``
+Generated jar file : ``app/target/nlp-studio-app-0.1.0-all.jar``
+
+## Installer
+Windows : ``scripts\package-windows.bat``
