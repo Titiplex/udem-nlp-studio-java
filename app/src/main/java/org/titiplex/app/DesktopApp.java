@@ -1,4 +1,4 @@
-package org.titiplex;
+package org.titiplex.app;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -8,7 +8,9 @@ import javafx.stage.Stage;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.titiplex.ui.BridgeInstaller;
+import org.titiplex.backend.BackendApplication;
+import org.titiplex.app.bridge.AppBridge;
+import org.titiplex.app.ui.BridgeInstaller;
 
 import java.net.URL;
 
@@ -25,22 +27,20 @@ public class DesktopApp extends Application {
 
     @Override
     public void start(Stage stage) {
+        WebView webView = new WebView();
+        WebEngine engine = webView.getEngine();
 
-        // RuleService ruleService = context.getBean(RuleService.class);
-
-        WebView webview = new WebView();
-        WebEngine engine = webview.getEngine();
-
-        BridgeInstaller.install(engine);
+        AppBridge bridge = context.getBean(AppBridge.class);
+        BridgeInstaller.install(engine, bridge);
 
         URL url = getClass().getResource("/webapp/index.html");
         if (url == null) {
-            throw new IllegalStateException("Frontend not found, please build and copy into desktop resources.");
+            throw new IllegalStateException("Frontend not found, please build frontend and copy dist to /webapp.");
         }
 
         engine.load(url.toExternalForm());
 
-        Scene scene = new Scene(webview, 1400, 800);
+        Scene scene = new Scene(webView, 1400, 900);
         stage.setTitle("NLP Studio");
         stage.setScene(scene);
         stage.show();
