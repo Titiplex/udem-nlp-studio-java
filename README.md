@@ -19,3 +19,22 @@ java -cp target/chuj-nlp-core-0.1.0.jar org.titiplex.Main input.docx rules.yaml 
 ```
 
 It will generate a file `output.conllu`.
+
+## Development
+
+```bash
+cd frontend
+npm install
+npm run build
+
+mvn clean package
+cd ..
+mvn -pl app -am javafx:run
+```
+
+Full build : ``mvn clean package``
+If front already built : ``mvn -pl app -am -Dskip.frontend=true javafx:run``
+
+## Production
+
+``mvn -pl app -am -Pdesktop-prod clean package``

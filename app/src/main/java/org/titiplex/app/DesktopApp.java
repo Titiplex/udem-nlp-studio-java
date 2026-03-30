@@ -2,15 +2,16 @@ package org.titiplex.app;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.titiplex.backend.BackendApplication;
 import org.titiplex.app.bridge.AppBridge;
 import org.titiplex.app.ui.BridgeInstaller;
+import org.titiplex.backend.BackendApplication;
 
 import java.net.URL;
 
@@ -35,7 +36,12 @@ public class DesktopApp extends Application {
 
         URL url = getClass().getResource("/webapp/index.html");
         if (url == null) {
-            throw new IllegalStateException("Frontend not found, please build frontend and copy dist to /webapp.");
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Frontend introuvable");
+            alert.setHeaderText("Le frontend Vue n'a pas été empaqueté");
+            alert.setContentText("Lance un build Maven qui génère le frontend puis le copie dans /webapp.");
+            alert.showAndWait();
+            throw new IllegalStateException("Frontend not found in classpath: /webapp/index.html");
         }
 
         engine.load(url.toExternalForm());
