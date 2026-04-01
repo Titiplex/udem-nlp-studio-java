@@ -11,7 +11,6 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.titiplex.app.bridge.AppBridge;
 import org.titiplex.app.ui.BridgeInstaller;
-import org.titiplex.backend.BackendApplication;
 
 import java.net.URL;
 
@@ -21,7 +20,7 @@ public class DesktopApp extends Application {
 
     @Override
     public void init() {
-        context = new SpringApplicationBuilder(BackendApplication.class)
+        context = new SpringApplicationBuilder(DesktopApplication.class)
                 .web(WebApplicationType.NONE)
                 .run();
     }
