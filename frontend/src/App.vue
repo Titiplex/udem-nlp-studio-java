@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import {onMounted, ref} from 'vue'
-import {type AppInfo, callBridge} from './bridge/desktopBridge'
+import {type AppInfo, callBridge, waitForBridge} from './bridge/desktopBridge'
 import RuleWorkbench from './components/rules/RuleWorkbench.vue'
 
 const appName = ref('NLP Studio')
 const version = ref('unknown')
 const status = ref('Loading...')
 
-onMounted(() => {
+onMounted(async () => {
+  const ready = await waitForBridge()
+
+  if (!ready) {
+    status.value = 'Desktop bridge unavailable'
+    return
+  }
+
   const pingResp = callBridge<string>('ping')
   const infoResp = callBridge<AppInfo>('getAppInfo')
 

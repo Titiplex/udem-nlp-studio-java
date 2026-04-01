@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {computed, onMounted, ref, watch} from 'vue'
-import {callBridge, type RuleBuilderSchema, type RuleDescriptor,} from '../../bridge/desktopBridge'
+import {callBridge, type RuleBuilderSchema, type RuleDescriptor, waitForBridge,} from '../../bridge/desktopBridge'
 import {useRuleEditorStore} from '../../stores/ruleEditorStore'
 import RuleListPane from './RuleListPane.vue'
 import RuleEditorTabs from './RuleEditorTabs.vue'
@@ -35,6 +35,13 @@ watch(schemaKey, (value) => {
 }, {immediate: true})
 
 onMounted(async () => {
+  const ready = await waitForBridge()
+
+  if (!ready) {
+    store.statusMessage = 'Desktop bridge unavailable.'
+    return
+  }
+
   const descriptorsResp = callBridge<RuleDescriptor[]>('listRuleDescriptors')
   descriptors.value = descriptorsResp.data ?? []
 

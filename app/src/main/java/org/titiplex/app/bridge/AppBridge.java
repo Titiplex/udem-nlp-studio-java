@@ -11,6 +11,7 @@ import org.titiplex.backend.service.RuleService;
 import java.util.UUID;
 import java.util.function.Supplier;
 
+@SuppressWarnings("unused")
 @Component
 public class AppBridge {
 

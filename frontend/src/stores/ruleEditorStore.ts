@@ -85,6 +85,7 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
             this.draft = {
                 ...this.draft,
                 ...patch,
+                kind: patch.kind ? patch.kind.toUpperCase() : this.draft.kind,
             }
             this.dirty = true
         },
@@ -138,6 +139,16 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
         },
 
         parseYaml() {
+            if (!this.draft.rawYaml || !this.draft.rawYaml.trim()) {
+                this.statusMessage = 'Le YAML est vide.'
+                this.issues = [{
+                    path: 'rawYaml',
+                    level: 'error',
+                    message: 'Le YAML est vide.',
+                }]
+                return
+            }
+
             const resp = callBridge<RuleDraftResult>('parseRuleYaml', JSON.stringify(this.draft))
             if (!resp.success || !resp.data) {
                 this.statusMessage = resp.message ?? 'Parsing YAML impossible.'
@@ -169,7 +180,7 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
             this.draft = {
                 id: null,
                 name: '',
-                kind,
+                kind: kind.toUpperCase(),
                 subtype,
                 scope: 'token',
                 enabled: true,

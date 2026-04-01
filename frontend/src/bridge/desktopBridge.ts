@@ -109,20 +109,27 @@ export function callBridge<T>(
     method: keyof DesktopBridge,
     ...args: string[]
 ): BridgeResponse<T> {
-    if (!window.appBridge) {
+    const bridge = window.appBridge
+
+    if (!bridge) {
         console.error(`[bridge] window.appBridge is missing`)
         return {success: false, message: 'Desktop bridge unavailable'}
     }
 
-    const candidate = window.appBridge[method] as ((...params: string[]) => string) | undefined
+    const candidate = bridge[method] as unknown
 
     if (typeof candidate !== 'function') {
-        console.error(`[bridge] method missing: ${String(method)}`, window.appBridge)
+        console.error(`[bridge] method missing: ${String(method)}`, bridge)
         return {success: false, message: `Bridge method missing: ${String(method)}`}
     }
 
     try {
-        const raw = candidate(...args)
+        const raw = Reflect.apply(
+            candidate as (...params: string[]) => string,
+            bridge,
+            args
+        )
+
         console.debug(`[bridge] ${String(method)} ->`, raw)
 
         if (typeof raw !== 'string') {
@@ -140,4 +147,17 @@ export function callBridge<T>(
             message: `Bridge call failed: ${String(method)}`,
         }
     }
+}
+
+export async function waitForBridge(timeoutMs = 3000): Promise<boolean> {
+    const start = Date.now()
+
+    while (Date.now() - start < timeoutMs) {
+        if (window.appBridge) {
+            return true
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+
+    return false
 }
