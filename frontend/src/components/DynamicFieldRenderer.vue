@@ -17,6 +17,19 @@ function update(value: unknown) {
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : []
 }
+
+function asJsonString(value: unknown): string {
+  if (typeof value === 'string') return value
+  return JSON.stringify(value ?? {}, null, 2)
+}
+
+function parseJsonInput(raw: string) {
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return raw
+  }
+}
 </script>
 
 <template>
@@ -43,7 +56,7 @@ function asStringArray(value: unknown): string[] {
         v-else-if="field.type === 'TEXTAREA' || field.type === 'YAML' || field.type === 'JSON' || field.type === 'TEMPLATE'"
         class="field-textarea"
         :placeholder="field.placeholder ?? ''"
-        :value="typeof modelValue === 'string' ? modelValue : JSON.stringify(modelValue ?? {}, null, 2)"
+        :value="typeof modelValue === 'string' ? modelValue : asJsonString(modelValue)"
         @input="update(($event.target as HTMLTextAreaElement).value)"
     />
 
@@ -102,10 +115,17 @@ function asStringArray(value: unknown): string[] {
     </div>
 
     <textarea
+        v-else-if="field.type === 'KEY_VALUE' || field.type === 'OBJECT' || field.type === 'OBJECT_LIST' || field.type === 'STRING_LIST'"
+        class="field-textarea"
+        :value="asJsonString(modelValue)"
+        @input="update(parseJsonInput(($event.target as HTMLTextAreaElement).value))"
+    />
+
+    <textarea
         v-else
         class="field-textarea"
-        :value="typeof modelValue === 'string' ? modelValue : JSON.stringify(modelValue ?? {}, null, 2)"
-        @input="update(($event.target as HTMLTextAreaElement).value)"
+        :value="asJsonString(modelValue)"
+        @input="update(parseJsonInput(($event.target as HTMLTextAreaElement).value))"
     />
   </div>
 </template>

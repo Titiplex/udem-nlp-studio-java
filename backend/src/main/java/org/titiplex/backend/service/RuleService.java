@@ -56,6 +56,21 @@ public class RuleService {
         return toDetailDto(ruleMapper.toDomain(saved));
     }
 
+    public RuleDetailDto createEmptyRule(String kind, String subtype) {
+        return new RuleDetailDto(
+                UUID.randomUUID(),
+                "",
+                RuleKind.valueOf(kind.toUpperCase()),
+                subtype,
+                "token",
+                true,
+                100,
+                "",
+                Map.of(),
+                ""
+        );
+    }
+
     public void seedDemoRulesIfEmpty() {
         if (ruleRepository.count() > 0) {
             return;

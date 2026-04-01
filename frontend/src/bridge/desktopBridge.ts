@@ -26,6 +26,30 @@ export interface RuleDescriptor {
     description: string
 }
 
+export interface ValidationIssue {
+    path: string
+    level: 'error' | 'warning'
+    message: string
+}
+
+export interface RuleDetail {
+    id: string | null
+    name: string
+    kind: string
+    subtype: string
+    scope: string
+    enabled: boolean
+    priority: number
+    description: string
+    payload: Record<string, unknown>
+    rawYaml: string
+}
+
+export interface RuleDraftResult {
+    rule: RuleDetail
+    issues: ValidationIssue[]
+}
+
 export interface FieldDescriptor {
     key: string
     label: string
@@ -49,13 +73,29 @@ export interface RuleBuilderSchema {
 
 export interface DesktopBridge {
     ping(): string
+
     getAppInfo(): string
+
     listRules(): string
+
+    getRule(id: string): string
+
     listEntries(): string
+
     listRuleDescriptors(): string
+
     listRuleSchemas(): string
+
     getRuleSchema(kind: string, subtype: string): string
+
+    parseRuleYaml(payloadJson: string): string
+
+    generateRuleYaml(payloadJson: string): string
+
+    validateRule(payloadJson: string): string
+
     saveRule(payloadJson: string): string
+
     runCorrection(payloadJson: string): string
 }
 
@@ -70,15 +110,34 @@ export function callBridge<T>(
     ...args: string[]
 ): BridgeResponse<T> {
     if (!window.appBridge) {
-        return { success: false, message: 'Desktop bridge unavailable' }
+        console.error(`[bridge] window.appBridge is missing`)
+        return {success: false, message: 'Desktop bridge unavailable'}
     }
 
-    const fn = window.appBridge[method] as (...params: string[]) => string
+    const candidate = window.appBridge[method] as ((...params: string[]) => string) | undefined
+
+    if (typeof candidate !== 'function') {
+        console.error(`[bridge] method missing: ${String(method)}`, window.appBridge)
+        return {success: false, message: `Bridge method missing: ${String(method)}`}
+    }
 
     try {
-        const raw = fn(...args)
+        const raw = candidate(...args)
+        console.debug(`[bridge] ${String(method)} ->`, raw)
+
+        if (typeof raw !== 'string') {
+            return {
+                success: false,
+                message: `Bridge method ${String(method)} did not return a string`,
+            }
+        }
+
         return JSON.parse(raw) as BridgeResponse<T>
-    } catch {
-        return { success: false, message: 'Bridge call failed' }
+    } catch (error) {
+        console.error(`[bridge] ${String(method)} failed`, error)
+        return {
+            success: false,
+            message: `Bridge call failed: ${String(method)}`,
+        }
     }
 }

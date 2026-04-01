@@ -30,12 +30,9 @@ npm run build
 
 Dev run :
 ```bash
-mvn -pl app -am clean package
-mvn -pl app -am javafx:run
+mvn -pl core,backend,app -am clean install -DskipTests
+mvn -f app/pom.xml clean javafx:run
 ```
-
-Full build : ``mvn clean package``
-If front already built : ``mvn -pl app -am -Dskip.frontend=true javafx:run``
 
 ## Production
 

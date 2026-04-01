@@ -1,10 +1,12 @@
 package org.titiplex.app;
 
 import javafx.application.Application;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -45,9 +47,16 @@ public class DesktopApp extends Application {
 
         engine.load(url.toExternalForm());
 
-        Scene scene = new Scene(webView, 1400, 900);
+        Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+        double width = Math.min(1400, bounds.getWidth() - 40);
+        double height = Math.min(900, bounds.getHeight() - 60);
+
+        Scene scene = new Scene(webView, width, height);
         stage.setTitle("NLP Studio");
         stage.setScene(scene);
+        stage.setMinWidth(1100);
+        stage.setMinHeight(700);
+        stage.centerOnScreen();
         stage.show();
     }
 
