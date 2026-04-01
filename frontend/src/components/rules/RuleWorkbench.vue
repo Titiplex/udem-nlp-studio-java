@@ -20,6 +20,10 @@ const schemaKey = computed(() => {
   return `${store.draft.kind}::${store.draft.subtype}`
 })
 
+const canRunYamlActions = computed(() => {
+  return !!store.draft.kind && !!store.draft.subtype
+})
+
 function loadSchema(kind: string, subtype: string) {
   const resp = callBridge<RuleBuilderSchema>('getRuleSchema', kind, subtype)
   schema.value = resp.data ?? null
@@ -70,10 +74,10 @@ onMounted(async () => {
         </div>
 
         <div class="editor-actions">
-          <button class="action-btn" @click="store.generateYaml()">Generate YAML</button>
-          <button class="action-btn" @click="store.parseYaml()">Parse YAML</button>
-          <button class="action-btn" @click="store.validateDraft()">Validate</button>
-          <button class="action-btn primary" @click="store.saveDraft()">Save</button>
+          <button class="action-btn" :disabled="!canRunYamlActions" @click="store.generateYaml()">Generate YAML</button>
+          <button class="action-btn" :disabled="!canRunYamlActions" @click="store.parseYaml()">Parse YAML</button>
+          <button class="action-btn" :disabled="!canRunYamlActions" @click="store.validateDraft()">Validate</button>
+          <button class="action-btn primary" :disabled="!canRunYamlActions" @click="store.saveDraft()">Save</button>
         </div>
       </div>
 
@@ -178,5 +182,10 @@ onMounted(async () => {
 
 .editor-body {
   min-height: 420px;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

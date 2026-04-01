@@ -6,9 +6,11 @@ This motor is made to correct a document consisting of entries with glosses.
 Then, it produces a CoNLL-U file.
 
 It is based on the [CoNLL-U format](https://universaldependencies.org/format.html).
-This project is part of the Chuj project taking place in Université de Montréal.
+This project is part of the Chuj project taking place in **_Université de Montréal_** (Québec, Canada).
 
-## Execution
+## Engine
+
+### Execution
 
 Supposing a file `input.docx` and a file `rules.yaml`.
 
@@ -20,7 +22,9 @@ java -cp target/chuj-nlp-core-0.1.0.jar org.titiplex.Main input.docx rules.yaml 
 
 It will generate a file `output.conllu`.
 
-## Development
+## Application
+
+### Development
 
 ```bash
 cd frontend
@@ -29,15 +33,18 @@ npm run build
 ```
 
 Dev run :
+
 ```bash
 mvn -pl core,backend,app -am clean install -DskipTests
 mvn -f app/pom.xml clean javafx:run
 ```
 
-## Production
+### Production
 
 ``mvn -pl app -am -Pdesktop-prod clean package``
+
 Generated jar file : ``app/target/nlp-studio-app-0.1.0-all.jar``
 
-## Installer
+### Installer
+
 Windows : ``scripts\package-windows.bat``
