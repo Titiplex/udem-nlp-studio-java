@@ -6,21 +6,21 @@ type ExtractItem = {
 }
 
 const props = defineProps<{
-  modelValue: ExtractItem[] | undefined
+  modelValue?: ExtractItem[]
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: ExtractItem[]]
 }>()
 
+function addItem() {
+  emit('update:modelValue', [...(props.modelValue ?? []), {type: '', extractor: '', into: ''}])
+}
+
 function updateItem(index: number, patch: Partial<ExtractItem>) {
   const next = [...(props.modelValue ?? [])]
   next[index] = {...next[index], ...patch}
   emit('update:modelValue', next)
-}
-
-function addItem() {
-  emit('update:modelValue', [...(props.modelValue ?? []), {type: '', extractor: '', into: ''}])
 }
 
 function removeItem(index: number) {
@@ -44,23 +44,21 @@ function moveDown(index: number) {
 </script>
 
 <template>
-  <div class="extractor-editor">
-    <div class="editor-head">
+  <div class="extract-editor">
+    <div class="editor-header">
       <h4>Extractors</h4>
-      <button class="ghost-btn" @click="addItem">Add extractor</button>
+      <button class="ghost-btn" type="button" @click="addItem">Add extractor</button>
     </div>
 
-    <div v-if="(modelValue ?? []).length === 0" class="empty-state">
-      No extractors.
-    </div>
+    <p v-if="(modelValue ?? []).length === 0" class="empty-state">No extractors.</p>
 
     <div v-for="(item, index) in modelValue ?? []" :key="index" class="extract-card">
-      <div class="extract-toolbar">
+      <div class="extract-card-header">
         <strong>Extractor {{ index + 1 }}</strong>
         <div class="toolbar-actions">
-          <button class="ghost-btn" @click="moveUp(index)">↑</button>
-          <button class="ghost-btn" @click="moveDown(index)">↓</button>
-          <button class="danger-btn" @click="removeItem(index)">Remove</button>
+          <button class="ghost-btn" type="button" @click="moveUp(index)">↑</button>
+          <button class="ghost-btn" type="button" @click="moveDown(index)">↓</button>
+          <button class="danger-btn" type="button" @click="removeItem(index)">Remove</button>
         </div>
       </div>
 
@@ -89,7 +87,7 @@ function moveDown(index: number) {
 </template>
 
 <style scoped>
-.extractor-editor {
+.extract-editor {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -99,15 +97,15 @@ function moveDown(index: number) {
   background: #fafafa;
 }
 
-.editor-head,
-.extract-toolbar {
+.editor-header,
+.extract-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
 }
 
-.editor-head h4 {
+.editor-header h4 {
   margin: 0;
 }
 
@@ -125,12 +123,18 @@ function moveDown(index: number) {
   margin-top: 12px;
 }
 
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .field-input {
+  width: 100%;
   border: 1px solid #d1d5db;
   border-radius: 10px;
   padding: 10px 12px;
-  background: white;
   font: inherit;
+  background: white;
 }
 
 .ghost-btn,
@@ -138,6 +142,7 @@ function moveDown(index: number) {
   border: 1px solid #d1d5db;
   border-radius: 10px;
   padding: 8px 10px;
+  font: inherit;
   background: white;
   cursor: pointer;
 }
@@ -146,12 +151,8 @@ function moveDown(index: number) {
   color: #b91c1c;
 }
 
-.toolbar-actions {
-  display: flex;
-  gap: 8px;
-}
-
 .empty-state {
+  margin: 0;
   color: #6b7280;
 }
 </style>

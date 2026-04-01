@@ -26,7 +26,7 @@ function patchField(key: string, value: unknown) {
   })
 }
 
-function supportsSpecialEditor(field: FieldDescriptor): boolean {
+function isSpecialField(field: FieldDescriptor): boolean {
   return ['match', 'set', 'feats', 'featsTemplate', 'extract', 'before', 'after'].includes(field.key)
 }
 </script>
@@ -58,7 +58,8 @@ function supportsSpecialEditor(field: FieldDescriptor): boolean {
         <KeyValueEditor
             v-else-if="field.key === 'feats'"
             title="Static features"
-            value-placeholder="Feature value"
+            key-placeholder="Feature"
+            value-placeholder="Value"
             :model-value="modelValue.payload[field.key] as Record<string, unknown> | undefined"
             @update:model-value="(value) => patchField(field.key, value)"
         />
@@ -66,6 +67,7 @@ function supportsSpecialEditor(field: FieldDescriptor): boolean {
         <KeyValueEditor
             v-else-if="field.key === 'featsTemplate'"
             title="Feature templates"
+            key-placeholder="Feature"
             value-placeholder="{template.path}"
             :model-value="modelValue.payload[field.key] as Record<string, unknown> | undefined"
             @update:model-value="(value) => patchField(field.key, value)"
@@ -99,9 +101,7 @@ function supportsSpecialEditor(field: FieldDescriptor): boolean {
               :model-value="modelValue.payload[field.key]"
               @update:model-value="(value) => patchField(field.key, value)"
           />
-          <p v-if="supportsSpecialEditor(field) === false" class="fallback-note">
-            Standard editor.
-          </p>
+          <p v-if="!isSpecialField(field)" class="fallback-note">Standard editor.</p>
         </div>
       </div>
     </template>

@@ -2,7 +2,7 @@
 type SetBlock = Record<string, unknown>
 
 const props = defineProps<{
-  modelValue: SetBlock | undefined
+  modelValue?: SetBlock
   subtype: string
 }>()
 

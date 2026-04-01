@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  modelValue: string[] | undefined
+  modelValue?: string[]
   title?: string
   placeholder?: string
 }>()
@@ -9,14 +9,14 @@ const emit = defineEmits<{
   'update:modelValue': [value: string[]]
 }>()
 
+function addItem() {
+  emit('update:modelValue', [...(props.modelValue ?? []), ''])
+}
+
 function updateItem(index: number, value: string) {
   const next = [...(props.modelValue ?? [])]
   next[index] = value
   emit('update:modelValue', next)
-}
-
-function addItem() {
-  emit('update:modelValue', [...(props.modelValue ?? []), ''])
 }
 
 function removeItem(index: number) {
@@ -41,14 +41,12 @@ function moveDown(index: number) {
 
 <template>
   <div class="list-editor">
-    <div class="editor-head">
-      <h4>{{ title ?? 'String list' }}</h4>
-      <button class="ghost-btn" @click="addItem">Add</button>
+    <div class="editor-header">
+      <h4>{{ title ?? 'List' }}</h4>
+      <button class="ghost-btn" type="button" @click="addItem">Add</button>
     </div>
 
-    <div v-if="(modelValue ?? []).length === 0" class="empty-state">
-      No items.
-    </div>
+    <p v-if="(modelValue ?? []).length === 0" class="empty-state">No items.</p>
 
     <div v-for="(item, index) in modelValue ?? []" :key="index" class="list-row">
       <input
@@ -57,9 +55,9 @@ function moveDown(index: number) {
           :placeholder="placeholder ?? 'Value'"
           @input="updateItem(index, ($event.target as HTMLInputElement).value)"
       />
-      <button class="ghost-btn" @click="moveUp(index)">↑</button>
-      <button class="ghost-btn" @click="moveDown(index)">↓</button>
-      <button class="danger-btn" @click="removeItem(index)">Remove</button>
+      <button class="ghost-btn" type="button" @click="moveUp(index)">↑</button>
+      <button class="ghost-btn" type="button" @click="moveDown(index)">↓</button>
+      <button class="danger-btn" type="button" @click="removeItem(index)">Remove</button>
     </div>
   </div>
 </template>
@@ -75,13 +73,14 @@ function moveDown(index: number) {
   background: #fafafa;
 }
 
-.editor-head {
+.editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
-.editor-head h4 {
+.editor-header h4 {
   margin: 0;
 }
 
@@ -92,11 +91,12 @@ function moveDown(index: number) {
 }
 
 .field-input {
+  width: 100%;
   border: 1px solid #d1d5db;
   border-radius: 10px;
   padding: 10px 12px;
-  background: white;
   font: inherit;
+  background: white;
 }
 
 .ghost-btn,
@@ -104,6 +104,7 @@ function moveDown(index: number) {
   border: 1px solid #d1d5db;
   border-radius: 10px;
   padding: 10px 12px;
+  font: inherit;
   background: white;
   cursor: pointer;
 }
@@ -113,6 +114,7 @@ function moveDown(index: number) {
 }
 
 .empty-state {
+  margin: 0;
   color: #6b7280;
 }
 </style>

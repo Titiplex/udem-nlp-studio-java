@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import {computed} from 'vue'
 
+type Entry = { key: string; value: string }
+
 const props = defineProps<{
-  modelValue: Record<string, unknown> | undefined
+  modelValue?: Record<string, unknown>
   title?: string
+  keyPlaceholder?: string
   valuePlaceholder?: string
 }>()
 
@@ -11,61 +14,63 @@ const emit = defineEmits<{
   'update:modelValue': [value: Record<string, unknown>]
 }>()
 
-const entries = computed(() =>
+const entries = computed<Entry[]>(() =>
     Object.entries(props.modelValue ?? {}).map(([key, value]) => ({
       key,
       value: String(value ?? ''),
     }))
 )
 
-function updateEntry(index: number, patch: Partial<{ key: string; value: string }>) {
-  const next = entries.value.map((entry, i) => (i === index ? {...entry, ...patch} : entry))
-  emitObject(next)
+function emitEntries(nextEntries: Entry[]) {
+  const out: Record<string, unknown> = {}
+  for (const entry of nextEntries) {
+    const key = entry.key.trim()
+    if (!key) continue
+    out[key] = entry.value
+  }
+  emit('update:modelValue', out)
 }
 
 function addEntry() {
-  emitObject([...entries.value, {key: '', value: ''}])
+  emitEntries([...entries.value, {key: '', value: ''}])
+}
+
+function updateKey(index: number, key: string) {
+  emitEntries(entries.value.map((entry, i) => i === index ? {...entry, key} : entry))
+}
+
+function updateValue(index: number, value: string) {
+  emitEntries(entries.value.map((entry, i) => i === index ? {...entry, value} : entry))
 }
 
 function removeEntry(index: number) {
-  emitObject(entries.value.filter((_, i) => i !== index))
-}
-
-function emitObject(items: Array<{ key: string; value: string }>) {
-  const out: Record<string, unknown> = {}
-  for (const item of items) {
-    if (!item.key.trim()) continue
-    out[item.key.trim()] = item.value
-  }
-  emit('update:modelValue', out)
+  emitEntries(entries.value.filter((_, i) => i !== index))
 }
 </script>
 
 <template>
   <div class="kv-editor">
-    <div class="editor-head">
-      <h4>{{ title ?? 'Key / Value pairs' }}</h4>
-      <button class="ghost-btn" @click="addEntry">Add</button>
+    <div class="editor-header">
+      <h4>{{ title ?? 'Key / Value' }}</h4>
+      <button class="ghost-btn" type="button" @click="addEntry">Add</button>
     </div>
 
-    <div v-if="entries.length === 0" class="empty-state">
-      No entries.
-    </div>
+    <p v-if="entries.length === 0" class="empty-state">No entries.</p>
 
     <div v-for="(entry, index) in entries" :key="index" class="kv-row">
       <input
           class="field-input"
           :value="entry.key"
-          placeholder="Feature key"
-          @input="updateEntry(index, { key: ($event.target as HTMLInputElement).value })"
+          :placeholder="keyPlaceholder ?? 'Key'"
+          @input="updateKey(index, ($event.target as HTMLInputElement).value)"
       />
       <input
           class="field-input"
           :value="entry.value"
           :placeholder="valuePlaceholder ?? 'Value'"
-          @input="updateEntry(index, { value: ($event.target as HTMLInputElement).value })"
+          @input="updateValue(index, ($event.target as HTMLInputElement).value)"
       />
-      <button class="danger-btn" @click="removeEntry(index)">Remove</button>
+      <button class="danger-btn" type="button" @click="removeEntry(index)">Remove</button>
     </div>
   </div>
 </template>
@@ -81,13 +86,14 @@ function emitObject(items: Array<{ key: string; value: string }>) {
   background: #fafafa;
 }
 
-.editor-head {
+.editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
-.editor-head h4 {
+.editor-header h4 {
   margin: 0;
 }
 
@@ -98,11 +104,12 @@ function emitObject(items: Array<{ key: string; value: string }>) {
 }
 
 .field-input {
+  width: 100%;
   border: 1px solid #d1d5db;
   border-radius: 10px;
   padding: 10px 12px;
-  background: white;
   font: inherit;
+  background: white;
 }
 
 .ghost-btn,
@@ -110,6 +117,7 @@ function emitObject(items: Array<{ key: string; value: string }>) {
   border: 1px solid #d1d5db;
   border-radius: 10px;
   padding: 10px 12px;
+  font: inherit;
   background: white;
   cursor: pointer;
 }
@@ -119,6 +127,7 @@ function emitObject(items: Array<{ key: string; value: string }>) {
 }
 
 .empty-state {
+  margin: 0;
   color: #6b7280;
 }
 </style>

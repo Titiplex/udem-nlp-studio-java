@@ -2,7 +2,7 @@
 type MatchBlock = Record<string, unknown>
 
 const props = defineProps<{
-  modelValue: MatchBlock | undefined
+  modelValue?: MatchBlock
 }>()
 
 const emit = defineEmits<{
