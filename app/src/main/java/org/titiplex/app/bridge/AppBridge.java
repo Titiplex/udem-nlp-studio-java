@@ -2,11 +2,14 @@ package org.titiplex.app.bridge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
+import org.titiplex.backend.dto.CorrectionRunRequestDto;
+import org.titiplex.backend.dto.EntryDetailDto;
 import org.titiplex.backend.dto.RuleDetailDto;
 import org.titiplex.backend.dto.RuleDraftResultDto;
 import org.titiplex.backend.service.RuleEditorService;
 import org.titiplex.backend.service.RuleSchemaService;
 import org.titiplex.backend.service.RuleService;
+import org.titiplex.backend.service.WorkspaceEntryService;
 
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -19,13 +22,16 @@ public class AppBridge {
     private final RuleService ruleService;
     private final RuleSchemaService ruleSchemaService;
     private final RuleEditorService ruleEditorService;
+    private final WorkspaceEntryService workspaceEntryService;
 
     public AppBridge(RuleService ruleService,
                      RuleSchemaService ruleSchemaService,
-                     RuleEditorService ruleEditorService) {
+                     RuleEditorService ruleEditorService,
+                     WorkspaceEntryService workspaceEntryService) {
         this.ruleService = ruleService;
         this.ruleSchemaService = ruleSchemaService;
         this.ruleEditorService = ruleEditorService;
+        this.workspaceEntryService = workspaceEntryService;
     }
 
     public String ping() {
@@ -45,6 +51,27 @@ public class AppBridge {
             return write(BridgeResponse.ok(ruleService.getRule(UUID.fromString(id))));
         } catch (Exception e) {
             return write(BridgeResponse.error("Cannot load rule: " + e.getMessage()));
+        }
+    }
+
+    public String listEntries() {
+        return safe(workspaceEntryService::listEntries);
+    }
+
+    public String getEntry(String id) {
+        try {
+            return write(BridgeResponse.ok(workspaceEntryService.getEntry(UUID.fromString(id))));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Cannot load entry: " + e.getMessage()));
+        }
+    }
+
+    public String saveEntry(String payloadJson) {
+        try {
+            EntryDetailDto dto = objectMapper.readValue(payloadJson, EntryDetailDto.class);
+            return write(BridgeResponse.ok(workspaceEntryService.saveEntry(dto)));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Save entry failed: " + e.getMessage()));
         }
     }
 
@@ -106,7 +133,12 @@ public class AppBridge {
     }
 
     public String runCorrection(String payloadJson) {
-        return write(BridgeResponse.ok("not implemented yet"));
+        try {
+            CorrectionRunRequestDto dto = objectMapper.readValue(payloadJson, CorrectionRunRequestDto.class);
+            return write(BridgeResponse.ok(workspaceEntryService.runCorrection(dto)));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Correction failed: " + e.getMessage()));
+        }
     }
 
     private String write(Object value) {

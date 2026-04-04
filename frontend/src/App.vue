@@ -1,11 +1,28 @@
 <script setup lang="ts">
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import {type AppInfo, callBridge, waitForBridge} from './bridge/desktopBridge'
 import RuleWorkbench from './components/rules/RuleWorkbench.vue'
+import EntriesWorkbench from './components/entries/EntriesWorkbench.vue'
+import PreviewWorkbench from './components/preview/PreviewWorkbench.vue'
+import SettingsWorkbench from './components/settings/SettingsWorkbench.vue'
+import {useWorkspaceStore, type WorkspaceSection} from './stores/workspaceStore'
+
+const workspace = useWorkspaceStore()
 
 const appName = ref('NLP Studio')
 const version = ref('unknown')
 const status = ref('Loading...')
+
+const navItems: Array<{ key: WorkspaceSection; label: string }> = [
+  {key: 'rules', label: 'Rules'},
+  {key: 'entries', label: 'Entries'},
+  {key: 'preview', label: 'Preview'},
+  {key: 'settings', label: 'Settings'},
+]
+
+const currentSectionLabel = computed(() => {
+  return navItems.find((item) => item.key === workspace.currentSection)?.label ?? 'Workspace'
+})
 
 onMounted(async () => {
   const ready = await waitForBridge()
@@ -32,21 +49,32 @@ onMounted(async () => {
         <p>Version {{ version }}</p>
       </div>
 
-      <div class="status-pill">
-        {{ status }}
+      <div class="topbar-right">
+        <div class="section-pill">{{ currentSectionLabel }}</div>
+        <div class="status-pill">
+          {{ status }}
+        </div>
       </div>
     </header>
 
     <main class="main-layout">
       <aside class="sidebar">
-        <button class="nav-btn active">Rules</button>
-        <button class="nav-btn">Entries</button>
-        <button class="nav-btn">Preview</button>
-        <button class="nav-btn">Settings</button>
+        <button
+            v-for="item in navItems"
+            :key="item.key"
+            class="nav-btn"
+            :class="{ active: workspace.currentSection === item.key }"
+            @click="workspace.openSection(item.key)"
+        >
+          {{ item.label }}
+        </button>
       </aside>
 
       <section class="content">
-        <RuleWorkbench/>
+        <RuleWorkbench v-if="workspace.currentSection === 'rules'"/>
+        <EntriesWorkbench v-else-if="workspace.currentSection === 'entries'"/>
+        <PreviewWorkbench v-else-if="workspace.currentSection === 'preview'"/>
+        <SettingsWorkbench v-else/>
       </section>
     </main>
   </div>
@@ -68,6 +96,7 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
 .topbar h1 {
@@ -80,12 +109,27 @@ onMounted(async () => {
   color: #6b7280;
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-pill,
 .status-pill {
   padding: 8px 12px;
   border-radius: 999px;
+  font-size: 14px;
+}
+
+.section-pill {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+}
+
+.status-pill {
   background: #eef2ff;
   border: 1px solid #c7d2fe;
-  font-size: 14px;
 }
 
 .main-layout {

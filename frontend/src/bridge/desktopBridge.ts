@@ -71,6 +71,34 @@ export interface RuleBuilderSchema {
     fields: FieldDescriptor[]
 }
 
+export interface EntrySummary {
+    id: string
+    documentOrder: number
+    rawChujText: string
+    rawGlossText: string
+    translation: string
+    approved: boolean
+    hasCorrection: boolean
+}
+
+export interface EntryDetail {
+    id: string | null
+    documentOrder: number
+    rawChujText: string
+    rawGlossText: string
+    translation: string
+    correctedChujText: string
+    correctedGlossText: string
+    correctedTranslation: string
+    approved: boolean
+    conlluPreview: string
+}
+
+export interface CorrectionRunRequest {
+    entryId: string
+    force: boolean
+}
+
 export interface DesktopBridge {
     ping(): string
 
@@ -81,6 +109,10 @@ export interface DesktopBridge {
     getRule(id: string): string
 
     listEntries(): string
+
+    getEntry(id: string): string
+
+    saveEntry(payloadJson: string): string
 
     listRuleDescriptors(): string
 
@@ -127,10 +159,8 @@ export function callBridge<T>(
         const raw = Reflect.apply(
             candidate as (...params: string[]) => string,
             bridge,
-            args
+            args,
         )
-
-        console.debug(`[bridge] ${String(method)} ->`, raw)
 
         if (typeof raw !== 'string') {
             return {
