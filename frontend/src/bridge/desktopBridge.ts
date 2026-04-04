@@ -99,6 +99,36 @@ export interface CorrectionRunRequest {
     force: boolean
 }
 
+export interface WorkspaceImportRequest {
+    rawText: string
+    replaceExisting: boolean
+}
+
+export interface WorkspaceImportResult {
+    importedEntries: number
+    totalEntries: number
+}
+
+export interface BatchCorrectionRequest {
+    force: boolean
+}
+
+export interface BatchCorrectionResult {
+    totalEntries: number
+    correctedEntries: number
+    skippedApprovedEntries: number
+}
+
+export interface WorkspaceExportRequest {
+    preferCorrected: boolean
+    correctedOnly: boolean
+}
+
+export interface TextExport {
+    fileName: string
+    content: string
+}
+
 export interface DesktopBridge {
     ping(): string
 
@@ -113,6 +143,14 @@ export interface DesktopBridge {
     getEntry(id: string): string
 
     saveEntry(payloadJson: string): string
+
+    importEntries(payloadJson: string): string
+
+    runCorrectionOnAll(payloadJson: string): string
+
+    exportRawText(payloadJson: string): string
+
+    exportConllu(payloadJson: string): string
 
     listRuleDescriptors(): string
 

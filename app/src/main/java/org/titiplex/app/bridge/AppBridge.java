@@ -2,10 +2,7 @@ package org.titiplex.app.bridge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
-import org.titiplex.backend.dto.CorrectionRunRequestDto;
-import org.titiplex.backend.dto.EntryDetailDto;
-import org.titiplex.backend.dto.RuleDetailDto;
-import org.titiplex.backend.dto.RuleDraftResultDto;
+import org.titiplex.backend.dto.*;
 import org.titiplex.backend.service.RuleEditorService;
 import org.titiplex.backend.service.RuleSchemaService;
 import org.titiplex.backend.service.RuleService;
@@ -72,6 +69,42 @@ public class AppBridge {
             return write(BridgeResponse.ok(workspaceEntryService.saveEntry(dto)));
         } catch (Exception e) {
             return write(BridgeResponse.error("Save entry failed: " + e.getMessage()));
+        }
+    }
+
+    public String importEntries(String payloadJson) {
+        try {
+            WorkspaceImportRequestDto dto = objectMapper.readValue(payloadJson, WorkspaceImportRequestDto.class);
+            return write(BridgeResponse.ok(workspaceEntryService.importEntries(dto)));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Import failed: " + e.getMessage()));
+        }
+    }
+
+    public String runCorrectionOnAll(String payloadJson) {
+        try {
+            BatchCorrectionRequestDto dto = objectMapper.readValue(payloadJson, BatchCorrectionRequestDto.class);
+            return write(BridgeResponse.ok(workspaceEntryService.runCorrectionOnAll(dto)));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Batch correction failed: " + e.getMessage()));
+        }
+    }
+
+    public String exportRawText(String payloadJson) {
+        try {
+            WorkspaceExportRequestDto dto = objectMapper.readValue(payloadJson, WorkspaceExportRequestDto.class);
+            return write(BridgeResponse.ok(workspaceEntryService.exportRawText(dto)));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Raw text export failed: " + e.getMessage()));
+        }
+    }
+
+    public String exportConllu(String payloadJson) {
+        try {
+            WorkspaceExportRequestDto dto = objectMapper.readValue(payloadJson, WorkspaceExportRequestDto.class);
+            return write(BridgeResponse.ok(workspaceEntryService.exportConllu(dto)));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("CoNLL-U export failed: " + e.getMessage()));
         }
     }
 

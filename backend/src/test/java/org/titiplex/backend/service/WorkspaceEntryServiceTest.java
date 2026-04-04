@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.titiplex.backend.BackendApplication;
-import org.titiplex.backend.dto.CorrectionRunRequestDto;
-import org.titiplex.backend.dto.EntryDetailDto;
+import org.titiplex.backend.dto.*;
 import org.titiplex.backend.repository.RuleRepository;
 import org.titiplex.backend.repository.WorkspaceEntryRepository;
 
@@ -95,5 +94,76 @@ class WorkspaceEntryServiceTest {
 
         assertEquals("MANUAL", result.correctedChujText());
         assertEquals("manual-preview", result.conlluPreview());
+    }
+
+    @Test
+    void importEntriesShouldCreateWorkspaceBlocks() {
+        WorkspaceImportResultDto result = workspaceEntryService.importEntries(
+                new WorkspaceImportRequestDto("""
+                        Ix naq
+                        A1 ganar
+                        Il gagne.
+                        
+                        Ha ix to
+                        DEM A1 ir
+                        Celui-ci va.
+                        """, true)
+        );
+
+        assertEquals(2, result.importedEntries());
+        assertEquals(2, result.totalEntries());
+        assertEquals(2, workspaceEntryService.listEntries().size());
+    }
+
+    @Test
+    void batchCorrectionShouldProcessAllNonApprovedEntries() {
+        workspaceEntryService.saveEntry(new EntryDetailDto(
+                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
+                "", "", "", false, ""
+        ));
+        workspaceEntryService.saveEntry(new EntryDetailDto(
+                null, 2, "Ha ix to", "DEM A1 ir", "Celui-ci va.",
+                "", "", "", true, ""
+        ));
+
+        BatchCorrectionResultDto result = workspaceEntryService.runCorrectionOnAll(
+                new BatchCorrectionRequestDto(false)
+        );
+
+        assertEquals(2, result.totalEntries());
+        assertEquals(1, result.correctedEntries());
+        assertEquals(1, result.skippedApprovedEntries());
+    }
+
+    @Test
+    void exportRawTextShouldReturnWorkspaceText() {
+        workspaceEntryService.saveEntry(new EntryDetailDto(
+                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
+                "Ix naq", "A1 ganar", "Il gagne.", false, "# sent_id = 1"
+        ));
+
+        TextExportDto result = workspaceEntryService.exportRawText(
+                new WorkspaceExportRequestDto(true, false)
+        );
+
+        assertEquals("workspace.txt", result.fileName());
+        assertTrue(result.content().contains("Ix naq"));
+        assertTrue(result.content().contains("A1 ganar"));
+    }
+
+    @Test
+    void exportConlluShouldReturnAggregatedPreview() {
+        workspaceEntryService.saveEntry(new EntryDetailDto(
+                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
+                "Ix naq", "A1 ganar", "Il gagne.", false,
+                "# sent_id = 1\n# text = Ix naq"
+        ));
+
+        TextExportDto result = workspaceEntryService.exportConllu(
+                new WorkspaceExportRequestDto(true, false)
+        );
+
+        assertEquals("workspace.conllu", result.fileName());
+        assertTrue(result.content().contains("# text = Ix naq"));
     }
 }

@@ -41,6 +41,23 @@ describe('entryEditorStore', () => {
                     conlluPreview: '',
                 }),
             saveEntry: (payloadJson: string) => ok(JSON.parse(payloadJson)),
+            importEntries: () => ok({importedEntries: 2, totalEntries: 2}),
+            runCorrectionOnAll: () =>
+                ok({
+                    totalEntries: 2,
+                    correctedEntries: 2,
+                    skippedApprovedEntries: 0,
+                }),
+            exportRawText: () =>
+                ok({
+                    fileName: 'workspace.txt',
+                    content: 'Ix naq\nA1 ganar\nIl gagne.',
+                }),
+            exportConllu: () =>
+                ok({
+                    fileName: 'workspace.conllu',
+                    content: '# sent_id = 1\n# text = Ix naq',
+                }),
             listRuleDescriptors: () => ok([]),
             listRuleSchemas: () => ok([]),
             getRuleSchema: () => ok(null),
@@ -101,5 +118,33 @@ describe('entryEditorStore', () => {
 
         expect(store.draft.correctedChujText).toBe('Ix naq')
         expect(store.draft.conlluPreview).toContain('# text = Ix naq')
+    })
+
+    it('imports entries from raw text buffer', async () => {
+        const store = useEntryEditorStore()
+
+        store.importBuffer = 'Ix naq\nA1 ganar\nIl gagne.'
+        await store.importEntries(true)
+
+        expect(store.importBuffer).toBe('')
+        expect(store.statusMessage).toContain('2 entrées importées')
+    })
+
+    it('loads aggregate previews', async () => {
+        const store = useEntryEditorStore()
+
+        await store.loadAggregateRawPreview(true, false)
+        await store.loadAggregateConlluPreview(true, false)
+
+        expect(store.aggregateRawPreview).toContain('Ix naq')
+        expect(store.aggregateConlluPreview).toContain('# text = Ix naq')
+    })
+
+    it('runs batch correction', async () => {
+        const store = useEntryEditorStore()
+
+        await store.runCorrectionOnAll(false)
+
+        expect(store.statusMessage).toContain('Correction en lot terminée')
     })
 })

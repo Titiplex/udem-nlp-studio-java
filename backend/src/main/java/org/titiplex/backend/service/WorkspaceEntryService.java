@@ -2,9 +2,7 @@ package org.titiplex.backend.service;
 
 import org.springframework.stereotype.Service;
 import org.titiplex.backend.domain.rule.RuleKind;
-import org.titiplex.backend.dto.CorrectionRunRequestDto;
-import org.titiplex.backend.dto.EntryDetailDto;
-import org.titiplex.backend.dto.EntrySummaryDto;
+import org.titiplex.backend.dto.*;
 import org.titiplex.backend.model.RuleEntity;
 import org.titiplex.backend.model.WorkspaceEntryEntity;
 import org.titiplex.backend.repository.RuleRepository;
@@ -12,7 +10,9 @@ import org.titiplex.backend.repository.WorkspaceEntryRepository;
 import org.titiplex.conllu.AnnotationConfig;
 import org.titiplex.io.RawTextReader;
 import org.titiplex.io.YamlRuleLoader;
+import org.titiplex.model.CorrectedBlock;
 import org.titiplex.model.CorrectionEntry;
+import org.titiplex.model.RawBlock;
 import org.titiplex.pipeline.ConlluPipeline;
 import org.titiplex.rules.CorrectionRule;
 import org.titiplex.rules.RuleEngine;
@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -82,17 +83,128 @@ public class WorkspaceEntryService {
             return toDetailDto(entity);
         }
 
-        CorrectionEntry correctionEntry = correctEntity(entity);
-
-        entity.setCorrectedChujText(defaultString(correctionEntry.corrected().chujText()));
-        entity.setCorrectedGlossText(defaultString(correctionEntry.corrected().glossText()));
-        entity.setCorrectedTranslation(defaultString(correctionEntry.corrected().translation()));
-        entity.setConlluPreview(new ConlluPipeline(new AnnotationConfig())
-                .toEntry(correctionEntry.corrected())
-                .toConlluString());
-
+        applyCorrectionToEntity(entity);
         WorkspaceEntryEntity saved = workspaceEntryRepository.save(entity);
         return toDetailDto(saved);
+    }
+
+    public BatchCorrectionResultDto runCorrectionOnAll(BatchCorrectionRequestDto request) {
+        List<WorkspaceEntryEntity> entities = workspaceEntryRepository.findAllByOrderByDocumentOrderAscIdAsc();
+
+        int corrected = 0;
+        int skippedApproved = 0;
+
+        for (WorkspaceEntryEntity entity : entities) {
+            if (entity.isApproved() && !request.force()) {
+                skippedApproved++;
+                continue;
+            }
+
+            applyCorrectionToEntity(entity);
+            corrected++;
+        }
+
+        workspaceEntryRepository.saveAll(entities);
+
+        return new BatchCorrectionResultDto(
+                entities.size(),
+                corrected,
+                skippedApproved
+        );
+    }
+
+    public WorkspaceImportResultDto importEntries(WorkspaceImportRequestDto request) {
+        String rawText = defaultString(request.rawText()).trim();
+        if (rawText.isBlank()) {
+            throw new IllegalArgumentException("Import text is empty");
+        }
+
+        List<RawBlock> blocks = parseRawBlocks(rawText);
+
+        if (request.replaceExisting()) {
+            workspaceEntryRepository.deleteAll();
+        }
+
+        int nextOrder = workspaceEntryRepository.findAllByOrderByDocumentOrderAscIdAsc().stream()
+                .mapToInt(WorkspaceEntryEntity::getDocumentOrder)
+                .max()
+                .orElse(0) + 1;
+
+        List<WorkspaceEntryEntity> created = new ArrayList<>();
+        for (RawBlock block : blocks) {
+            created.add(new WorkspaceEntryEntity(
+                    UUID.randomUUID(),
+                    nextOrder++,
+                    defaultString(block.chujText()),
+                    defaultString(block.glossText()),
+                    defaultString(block.translation()),
+                    "",
+                    "",
+                    "",
+                    false,
+                    ""
+            ));
+        }
+
+        workspaceEntryRepository.saveAll(created);
+
+        return new WorkspaceImportResultDto(
+                created.size(),
+                (int) workspaceEntryRepository.count()
+        );
+    }
+
+    public TextExportDto exportRawText(WorkspaceExportRequestDto request) {
+        List<WorkspaceEntryEntity> entities = workspaceEntryRepository.findAllByOrderByDocumentOrderAscIdAsc();
+
+        StringBuilder sb = new StringBuilder();
+        boolean wroteAny = false;
+
+        for (WorkspaceEntryEntity entity : entities) {
+            BlockText block = toExportBlock(entity, request.preferCorrected(), request.correctedOnly());
+            if (block == null) {
+                continue;
+            }
+
+            if (wroteAny) {
+                sb.append("\n");
+            }
+
+            sb.append(block.chuj()).append("\n")
+                    .append(block.gloss()).append("\n")
+                    .append(block.translation()).append("\n");
+
+            wroteAny = true;
+        }
+
+        return new TextExportDto("workspace.txt", sb.toString().trim());
+    }
+
+    public TextExportDto exportConllu(WorkspaceExportRequestDto request) {
+        List<WorkspaceEntryEntity> entities = workspaceEntryRepository.findAllByOrderByDocumentOrderAscIdAsc();
+
+        StringBuilder sb = new StringBuilder();
+        boolean wroteAny = false;
+
+        for (WorkspaceEntryEntity entity : entities) {
+            if (request.correctedOnly() && !hasCorrection(entity)) {
+                continue;
+            }
+
+            String preview = ensureConlluPreview(entity, request.preferCorrected());
+            if (preview.isBlank()) {
+                continue;
+            }
+
+            if (wroteAny) {
+                sb.append("\n");
+            }
+
+            sb.append(preview.trim()).append("\n");
+            wroteAny = true;
+        }
+
+        return new TextExportDto("workspace.conllu", sb.toString().trim());
     }
 
     public void seedDemoEntriesIfEmpty() {
@@ -125,6 +237,39 @@ public class WorkspaceEntryService {
                 false,
                 ""
         ));
+    }
+
+    private void applyCorrectionToEntity(WorkspaceEntryEntity entity) {
+        CorrectionEntry correctionEntry = correctEntity(entity);
+
+        entity.setCorrectedChujText(defaultString(correctionEntry.corrected().chujText()));
+        entity.setCorrectedGlossText(defaultString(correctionEntry.corrected().glossText()));
+        entity.setCorrectedTranslation(defaultString(correctionEntry.corrected().translation()));
+        entity.setConlluPreview(new ConlluPipeline(new AnnotationConfig())
+                .toEntry(correctionEntry.corrected())
+                .toConlluString());
+    }
+
+    private String ensureConlluPreview(WorkspaceEntryEntity entity, boolean preferCorrected) {
+        if (!defaultString(entity.getConlluPreview()).isBlank()) {
+            return entity.getConlluPreview();
+        }
+
+        if (preferCorrected && hasCorrection(entity)) {
+            CorrectedBlock block = new CorrectedBlock(
+                    entity.getDocumentOrder(),
+                    defaultString(entity.getCorrectedChujText()),
+                    defaultString(entity.getCorrectedGlossText()),
+                    defaultString(entity.getCorrectedTranslation()),
+                    List.of()
+            );
+            return new ConlluPipeline(new AnnotationConfig()).toEntry(block).toConlluString();
+        }
+
+        CorrectionEntry correctionEntry = correctEntity(entity);
+        return new ConlluPipeline(new AnnotationConfig())
+                .toEntry(correctionEntry.corrected())
+                .toConlluString();
     }
 
     private CorrectionEntry correctEntity(WorkspaceEntryEntity entity) {
@@ -165,10 +310,40 @@ public class WorkspaceEntryService {
         );
     }
 
+    private List<RawBlock> parseRawBlocks(String rawText) {
+        try (InputStream in = new ByteArrayInputStream(rawText.getBytes(StandardCharsets.UTF_8))) {
+            return new RawTextReader().read(in);
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot import entries: " + e.getMessage(), e);
+        }
+    }
+
     private String buildRawBlock(WorkspaceEntryEntity entity) {
         return defaultString(entity.getRawChujText()) + "\n"
                 + defaultString(entity.getRawGlossText()) + "\n"
                 + defaultString(entity.getTranslation()) + "\n";
+    }
+
+    private BlockText toExportBlock(WorkspaceEntryEntity entity,
+                                    boolean preferCorrected,
+                                    boolean correctedOnly) {
+        boolean useCorrected = preferCorrected && hasCorrection(entity);
+
+        if (correctedOnly && !useCorrected) {
+            return null;
+        }
+
+        String chuj = useCorrected
+                ? defaultString(entity.getCorrectedChujText())
+                : defaultString(entity.getRawChujText());
+        String gloss = useCorrected
+                ? defaultString(entity.getCorrectedGlossText())
+                : defaultString(entity.getRawGlossText());
+        String translation = useCorrected
+                ? defaultString(entity.getCorrectedTranslation())
+                : defaultString(entity.getTranslation());
+
+        return new BlockText(chuj, gloss, translation);
     }
 
     private EntrySummaryDto toSummaryDto(WorkspaceEntryEntity entity) {
@@ -206,5 +381,8 @@ public class WorkspaceEntryService {
 
     private String defaultString(String value) {
         return value == null ? "" : value;
+    }
+
+    private record BlockText(String chuj, String gloss, String translation) {
     }
 }

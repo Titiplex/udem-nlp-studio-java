@@ -1,5 +1,16 @@
 import {defineStore} from 'pinia'
-import {callBridge, type CorrectionRunRequest, type EntryDetail, type EntrySummary,} from '../bridge/desktopBridge'
+import {
+    type BatchCorrectionRequest,
+    type BatchCorrectionResult,
+    callBridge,
+    type CorrectionRunRequest,
+    type EntryDetail,
+    type EntrySummary,
+    type TextExport,
+    type WorkspaceExportRequest,
+    type WorkspaceImportRequest,
+    type WorkspaceImportResult,
+} from '../bridge/desktopBridge'
 
 function emptyEntry(): EntryDetail {
     return {
@@ -24,7 +35,20 @@ export const useEntryEditorStore = defineStore('entryEditor', {
         busy: false,
         dirty: false,
         statusMessage: '',
+        importBuffer: '',
+        aggregateConlluPreview: '',
+        aggregateRawPreview: '',
     }),
+
+    getters: {
+        entryCount(state): number {
+            return state.entries.length
+        },
+
+        correctedCount(state): number {
+            return state.entries.filter((entry) => entry.hasCorrection).length
+        },
+    },
 
     actions: {
         async refreshEntries() {
@@ -120,6 +144,81 @@ export const useEntryEditorStore = defineStore('entryEditor', {
             this.dirty = false
             this.statusMessage = 'Correction exécutée.'
             await this.refreshEntries()
+        },
+
+        async importEntries(replaceExisting: boolean) {
+            const payload: WorkspaceImportRequest = {
+                rawText: this.importBuffer,
+                replaceExisting,
+            }
+
+            const resp = callBridge<WorkspaceImportResult>('importEntries', JSON.stringify(payload))
+            if (!resp.success || !resp.data) {
+                this.statusMessage = resp.message ?? 'Import impossible.'
+                return
+            }
+
+            this.importBuffer = ''
+            this.statusMessage = `${resp.data.importedEntries} entrées importées.`
+            await this.refreshEntries()
+
+            if (this.entries.length > 0) {
+                await this.loadEntry(this.entries[0].id)
+            }
+        },
+
+        async runCorrectionOnAll(force = false) {
+            const payload: BatchCorrectionRequest = {force}
+
+            const resp = callBridge<BatchCorrectionResult>('runCorrectionOnAll', JSON.stringify(payload))
+            if (!resp.success || !resp.data) {
+                this.statusMessage = resp.message ?? 'Correction en lot impossible.'
+                return
+            }
+
+            this.statusMessage =
+                `Correction en lot terminée : ${resp.data.correctedEntries}/${resp.data.totalEntries} corrigées` +
+                (resp.data.skippedApprovedEntries > 0
+                    ? `, ${resp.data.skippedApprovedEntries} approuvées ignorées`
+                    : '.')
+
+            await this.refreshEntries()
+
+            if (this.selectedEntryId) {
+                await this.loadEntry(this.selectedEntryId)
+            }
+        },
+
+        async loadAggregateConlluPreview(preferCorrected = true, correctedOnly = false) {
+            const payload: WorkspaceExportRequest = {
+                preferCorrected,
+                correctedOnly,
+            }
+
+            const resp = callBridge<TextExport>('exportConllu', JSON.stringify(payload))
+            if (!resp.success || !resp.data) {
+                this.statusMessage = resp.message ?? 'Chargement de la preview CoNLL-U impossible.'
+                return
+            }
+
+            this.aggregateConlluPreview = resp.data.content
+            this.statusMessage = 'Preview CoNLL-U chargée.'
+        },
+
+        async loadAggregateRawPreview(preferCorrected = true, correctedOnly = false) {
+            const payload: WorkspaceExportRequest = {
+                preferCorrected,
+                correctedOnly,
+            }
+
+            const resp = callBridge<TextExport>('exportRawText', JSON.stringify(payload))
+            if (!resp.success || !resp.data) {
+                this.statusMessage = resp.message ?? 'Chargement de l’export texte impossible.'
+                return
+            }
+
+            this.aggregateRawPreview = resp.data.content
+            this.statusMessage = 'Export texte chargé.'
         },
     },
 })
