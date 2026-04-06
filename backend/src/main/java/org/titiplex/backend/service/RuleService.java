@@ -112,10 +112,17 @@ public class RuleService {
                 Map.of(
                         "match", Map.of("gloss", Map.of("in_lexicon", "spanish_verbs")),
                         "set", Map.of(
-                                "extract", List.of(Map.of("type", "scan_agreement", "extractor", "agreement_verbs")),
+                                "upos", "VERB",
+                                "extract", List.of(Map.of(
+                                        "type", "scan_agreement",
+                                        "extractor", "agreement_verbs",
+                                        "into", "agreement_verbs"
+                                )),
                                 "feats_template", Map.of(
                                         "Pers[subj]", "{agreement_verbs.A.person}",
-                                        "Number[subj]", "{agreement_verbs.A.number}"
+                                        "Number[subj]", "{agreement_verbs.A.number}",
+                                        "Pers[obj]", "{agreement_verbs.B.person}",
+                                        "Number[obj]", "{agreement_verbs.B.number}"
                                 )
                         )
                 ),
@@ -126,12 +133,16 @@ public class RuleService {
                             gloss:
                               in_lexicon: spanish_verbs
                           set:
+                            upos: VERB
                             extract:
                               - type: scan_agreement
                                 extractor: agreement_verbs
+                                into: agreement_verbs
                             feats_template:
                               Pers[subj]: "{agreement_verbs.A.person}"
                               Number[subj]: "{agreement_verbs.A.number}"
+                              Pers[obj]: "{agreement_verbs.B.person}"
+                              Number[obj]: "{agreement_verbs.B.number}"
                         """
         ));
     }

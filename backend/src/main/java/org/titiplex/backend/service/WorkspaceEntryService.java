@@ -10,7 +10,6 @@ import org.titiplex.backend.repository.WorkspaceEntryRepository;
 import org.titiplex.conllu.AnnotationConfig;
 import org.titiplex.io.RawTextReader;
 import org.titiplex.io.YamlRuleLoader;
-import org.titiplex.model.CorrectedBlock;
 import org.titiplex.model.CorrectionEntry;
 import org.titiplex.model.RawBlock;
 import org.titiplex.pipeline.ConlluPipeline;
@@ -31,11 +30,14 @@ public class WorkspaceEntryService {
 
     private final WorkspaceEntryRepository workspaceEntryRepository;
     private final RuleRepository ruleRepository;
+    private final AnnotationConfigComposerService annotationConfigComposerService;
 
     public WorkspaceEntryService(WorkspaceEntryRepository workspaceEntryRepository,
-                                 RuleRepository ruleRepository) {
+                                 RuleRepository ruleRepository,
+                                 AnnotationConfigComposerService annotationConfigComposerService) {
         this.workspaceEntryRepository = workspaceEntryRepository;
         this.ruleRepository = ruleRepository;
+        this.annotationConfigComposerService = annotationConfigComposerService;
     }
 
     public List<EntrySummaryDto> listEntries() {
@@ -47,7 +49,7 @@ public class WorkspaceEntryService {
     public EntryDetailDto getEntry(UUID id) {
         WorkspaceEntryEntity entity = workspaceEntryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + id));
-        return toDetailDto(entity);
+        return toDetailDto(entity, true);
     }
 
     public EntryDetailDto saveEntry(EntryDetailDto dto) {
@@ -68,7 +70,7 @@ public class WorkspaceEntryService {
         entity.setConlluPreview(defaultString(dto.conlluPreview()));
 
         WorkspaceEntryEntity saved = workspaceEntryRepository.save(entity);
-        return toDetailDto(saved);
+        return toDetailDto(saved, true);
     }
 
     public EntryDetailDto runCorrection(CorrectionRunRequestDto request) {
@@ -80,12 +82,12 @@ public class WorkspaceEntryService {
                 .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + request.entryId()));
 
         if (entity.isApproved() && !request.force()) {
-            return toDetailDto(entity);
+            return toDetailDto(entity, true);
         }
 
         applyCorrectionToEntity(entity);
         WorkspaceEntryEntity saved = workspaceEntryRepository.save(entity);
-        return toDetailDto(saved);
+        return toDetailDto(saved, true);
     }
 
     public BatchCorrectionResultDto runCorrectionOnAll(BatchCorrectionRequestDto request) {
@@ -187,11 +189,11 @@ public class WorkspaceEntryService {
         boolean wroteAny = false;
 
         for (WorkspaceEntryEntity entity : entities) {
-            if (request.correctedOnly() && !hasCorrection(entity)) {
+            if (request.correctedOnly() && !hasUsableCorrectedText(entity)) {
                 continue;
             }
 
-            String preview = ensureConlluPreview(entity, request.preferCorrected());
+            String preview = buildLiveConlluPreview(entity, request.preferCorrected());
             if (preview.isBlank()) {
                 continue;
             }
@@ -240,49 +242,68 @@ public class WorkspaceEntryService {
     }
 
     private void applyCorrectionToEntity(WorkspaceEntryEntity entity) {
-        CorrectionEntry correctionEntry = correctEntity(entity);
+        CorrectionEntry correctionEntry = correctRawEntity(entity);
+        AnnotationConfig annotationConfig = annotationConfigComposerService.buildAnnotationConfig();
 
         entity.setCorrectedChujText(defaultString(correctionEntry.corrected().chujText()));
         entity.setCorrectedGlossText(defaultString(correctionEntry.corrected().glossText()));
         entity.setCorrectedTranslation(defaultString(correctionEntry.corrected().translation()));
-        entity.setConlluPreview(new ConlluPipeline(new AnnotationConfig())
+        entity.setConlluPreview(new ConlluPipeline(annotationConfig)
                 .toEntry(correctionEntry.corrected())
                 .toConlluString());
     }
 
-    private String ensureConlluPreview(WorkspaceEntryEntity entity, boolean preferCorrected) {
-        if (!defaultString(entity.getConlluPreview()).isBlank()) {
-            return entity.getConlluPreview();
+    private String buildLiveConlluPreview(WorkspaceEntryEntity entity, boolean preferCorrected) {
+        AnnotationConfig annotationConfig = annotationConfigComposerService.buildAnnotationConfig();
+
+        if (preferCorrected && hasUsableCorrectedText(entity)) {
+            CorrectionEntry normalizedCorrected = normalizeAlreadyCorrectedText(entity);
+            return new ConlluPipeline(annotationConfig)
+                    .toEntry(normalizedCorrected.corrected())
+                    .toConlluString();
         }
 
-        if (preferCorrected && hasCorrection(entity)) {
-            CorrectedBlock block = new CorrectedBlock(
-                    entity.getDocumentOrder(),
-                    defaultString(entity.getCorrectedChujText()),
-                    defaultString(entity.getCorrectedGlossText()),
-                    defaultString(entity.getCorrectedTranslation()),
-                    List.of()
-            );
-            return new ConlluPipeline(new AnnotationConfig()).toEntry(block).toConlluString();
-        }
-
-        CorrectionEntry correctionEntry = correctEntity(entity);
-        return new ConlluPipeline(new AnnotationConfig())
+        CorrectionEntry correctionEntry = correctRawEntity(entity);
+        return new ConlluPipeline(annotationConfig)
                 .toEntry(correctionEntry.corrected())
                 .toConlluString();
     }
 
-    private CorrectionEntry correctEntity(WorkspaceEntryEntity entity) {
-        try {
-            List<CorrectionRule> rules = loadCorrectionRules();
+    private CorrectionEntry normalizeAlreadyCorrectedText(WorkspaceEntryEntity entity) {
+        return processBlockText(
+                defaultString(entity.getCorrectedChujText()),
+                defaultString(entity.getCorrectedGlossText()),
+                defaultString(entity.getCorrectedTranslation()),
+                List.of()
+        );
+    }
 
+    private CorrectionEntry correctRawEntity(WorkspaceEntryEntity entity) {
+        return processBlockText(
+                defaultString(entity.getRawChujText()),
+                defaultString(entity.getRawGlossText()),
+                defaultString(entity.getTranslation()),
+                loadCorrectionRules()
+        );
+    }
+
+    private CorrectionEntry processBlockText(String chujText,
+                                             String glossText,
+                                             String translation,
+                                             List<CorrectionRule> correctionRules) {
+        try {
             ParityService service = new ParityService(
                     new RawTextReader(),
-                    new RuleEngine(rules),
-                    new AnnotationConfig()
+                    new RuleEngine(correctionRules),
+                    annotationConfigComposerService.buildAnnotationConfig()
             );
 
-            try (InputStream in = new ByteArrayInputStream(buildRawBlock(entity).getBytes(StandardCharsets.UTF_8))) {
+            try (InputStream in = new ByteArrayInputStream(
+                    (defaultString(chujText) + "\n"
+                            + defaultString(glossText) + "\n"
+                            + defaultString(translation) + "\n")
+                            .getBytes(StandardCharsets.UTF_8)
+            )) {
                 List<CorrectionEntry> out = service.correct(in);
                 if (out.isEmpty()) {
                     throw new IllegalStateException("Correction engine returned no entries");
@@ -290,12 +311,13 @@ public class WorkspaceEntryService {
                 return out.getFirst();
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Cannot run correction: " + e.getMessage(), e);
+            throw new IllegalStateException("Cannot process block: " + e.getMessage(), e);
         }
     }
 
     private List<CorrectionRule> loadCorrectionRules() {
         String yaml = ruleRepository.findByKindOrderByPriorityAscNameAsc(RuleKind.CORRECTION).stream()
+                .filter(RuleEntity::isEnabled)
                 .map(RuleEntity::getRawYaml)
                 .filter(raw -> raw != null && !raw.isBlank())
                 .reduce("", (left, right) -> left + "\n" + right)
@@ -318,16 +340,10 @@ public class WorkspaceEntryService {
         }
     }
 
-    private String buildRawBlock(WorkspaceEntryEntity entity) {
-        return defaultString(entity.getRawChujText()) + "\n"
-                + defaultString(entity.getRawGlossText()) + "\n"
-                + defaultString(entity.getTranslation()) + "\n";
-    }
-
     private BlockText toExportBlock(WorkspaceEntryEntity entity,
                                     boolean preferCorrected,
                                     boolean correctedOnly) {
-        boolean useCorrected = preferCorrected && hasCorrection(entity);
+        boolean useCorrected = preferCorrected && hasUsableCorrectedText(entity);
 
         if (correctedOnly && !useCorrected) {
             return null;
@@ -354,11 +370,15 @@ public class WorkspaceEntryService {
                 defaultString(entity.getRawGlossText()),
                 defaultString(entity.getTranslation()),
                 entity.isApproved(),
-                hasCorrection(entity)
+                hasUsableCorrectedText(entity)
         );
     }
 
-    private EntryDetailDto toDetailDto(WorkspaceEntryEntity entity) {
+    private EntryDetailDto toDetailDto(WorkspaceEntryEntity entity, boolean livePreview) {
+        String preview = livePreview
+                ? buildLiveConlluPreview(entity, true)
+                : defaultString(entity.getConlluPreview());
+
         return new EntryDetailDto(
                 entity.getId(),
                 entity.getDocumentOrder(),
@@ -369,14 +389,14 @@ public class WorkspaceEntryService {
                 defaultString(entity.getCorrectedGlossText()),
                 defaultString(entity.getCorrectedTranslation()),
                 entity.isApproved(),
-                defaultString(entity.getConlluPreview())
+                defaultString(preview)
         );
     }
 
-    private boolean hasCorrection(WorkspaceEntryEntity entity) {
+    private boolean hasUsableCorrectedText(WorkspaceEntryEntity entity) {
         return !defaultString(entity.getCorrectedChujText()).isBlank()
                 || !defaultString(entity.getCorrectedGlossText()).isBlank()
-                || !defaultString(entity.getConlluPreview()).isBlank();
+                || !defaultString(entity.getCorrectedTranslation()).isBlank();
     }
 
     private String defaultString(String value) {

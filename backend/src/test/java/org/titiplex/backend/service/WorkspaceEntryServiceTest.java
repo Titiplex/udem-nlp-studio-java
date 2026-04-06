@@ -5,9 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.titiplex.backend.BackendApplication;
+import org.titiplex.backend.domain.rule.RuleKind;
 import org.titiplex.backend.dto.*;
 import org.titiplex.backend.repository.RuleRepository;
 import org.titiplex.backend.repository.WorkspaceEntryRepository;
+
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -22,6 +26,9 @@ class WorkspaceEntryServiceTest {
 
     @Autowired
     private RuleRepository ruleRepository;
+
+    @Autowired
+    private RuleService ruleService;
 
     @BeforeEach
     void setUp() {
@@ -93,7 +100,7 @@ class WorkspaceEntryServiceTest {
         );
 
         assertEquals("MANUAL", result.correctedChujText());
-        assertEquals("manual-preview", result.conlluPreview());
+        assertFalse(result.conlluPreview().isBlank());
     }
 
     @Test
@@ -165,5 +172,71 @@ class WorkspaceEntryServiceTest {
 
         assertEquals("workspace.conllu", result.fileName());
         assertTrue(result.content().contains("# text = Ix naq"));
+    }
+
+    @Test
+    void annotationRulesSavedInBackendShouldAffectConlluPreview() {
+        ruleService.saveRule(new RuleDetailDto(
+                null,
+                "Agreement from saved annotation rules",
+                RuleKind.ANNOTATION,
+                "conllu",
+                "token",
+                true,
+                20,
+                "Demo annotation rule saved in backend.",
+                Map.of(
+                        "match", Map.of("gloss", Map.of("in_lexicon", "spanish_verbs")),
+                        "set", Map.of(
+                                "upos", "VERB",
+                                "extract", List.of(Map.of(
+                                        "type", "scan_agreement",
+                                        "extractor", "agreement_verbs",
+                                        "into", "agreement_verbs"
+                                )),
+                                "feats_template", Map.of(
+                                        "Pers[subj]", "{agreement_verbs.A.person}",
+                                        "Number[subj]", "{agreement_verbs.A.number}"
+                                )
+                        )
+                ),
+                """
+                        - name: Agreement from saved annotation rules
+                          scope: token
+                          match:
+                            gloss:
+                              in_lexicon: spanish_verbs
+                          set:
+                            upos: VERB
+                            extract:
+                              - type: scan_agreement
+                                extractor: agreement_verbs
+                                into: agreement_verbs
+                            feats_template:
+                              Pers[subj]: "{agreement_verbs.A.person}"
+                              Number[subj]: "{agreement_verbs.A.number}"
+                        """
+        ));
+
+        EntryDetailDto saved = workspaceEntryService.saveEntry(new EntryDetailDto(
+                null,
+                1,
+                "Ix naq",
+                "A1 ganar",
+                "Il gagne.",
+                "",
+                "",
+                "",
+                false,
+                ""
+        ));
+
+        EntryDetailDto corrected = workspaceEntryService.runCorrection(
+                new CorrectionRunRequestDto(saved.id(), false)
+        );
+
+        assertTrue(corrected.conlluPreview().contains("VERB"));
+        assertTrue(corrected.conlluPreview().contains("Pers[subj]=1"));
+        assertTrue(corrected.conlluPreview().contains("Number[subj]=Sing"));
     }
 }

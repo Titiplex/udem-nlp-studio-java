@@ -1,0 +1,71 @@
+def:
+  pos:
+    [
+      "ADJ",
+      "ADV",
+      "INTJ",
+      "NOUN",
+      "PROPN",
+      "VERB",
+      "PUNCT",
+      "X",
+      "ADP",
+      "AUX",
+      "CCONJ",
+      "DET",
+      "NUM",
+      "PART",
+      "PRON",
+      "SCONJ"
+    ]
+  feats:
+    [
+      "Animacy",
+      "Aspect",
+      "Definite",
+      "Degree",
+      "Mood",
+      "Number",
+      "Number[obj]",
+      "Number[subj]",
+      "Person",
+      "Pers[obj]",
+      "Pers[subj]",
+      "Polarity",
+      "Poss",
+      "PronType",
+      "Reflex",
+      "SubCat",
+      "Tense",
+      "VerbForm",
+      "Voice"
+    ]
+
+lexicons:
+  spanish_verbs:
+    - ganar
+    - ir
+    - comer
+    - ver
+    - hacer
+    - venir
+    - salir
+    - decir
+    - estar
+    - tener
+    - poder
+
+extractors:
+  agreement_verbs:
+    tag_schema:
+      series:
+        A: "subj"
+        B: "obj"
+      values:
+        person: [ "1", "2", "3" ]
+        number:
+          suffix: "PL"
+
+gloss_map: { }
+
+rules: [ ]
