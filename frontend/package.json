@@ -12,10 +12,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "js-yaml": "^4.1.0",
     "pinia": "^2.1.7",
     "vue": "^3.5.13"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^25.0.1",

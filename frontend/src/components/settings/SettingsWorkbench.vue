@@ -2,6 +2,9 @@
 import {onMounted} from 'vue'
 import {waitForBridge} from '../../bridge/desktopBridge'
 import {useAnnotationSettingsStore} from '../../stores/annotationSettingsStore'
+import StringListEditor from './StringListEditor.vue'
+import LexiconEditor from './LexiconEditor.vue'
+import ExtractorEditor from './ExtractorEditor.vue'
 
 const store = useAnnotationSettingsStore()
 
@@ -22,9 +25,8 @@ onMounted(async () => {
       <div>
         <h2>Annotation settings</h2>
         <p class="subtitle">
-          Édite ici le socle global partagé par toutes les règles d’annotation :
-          définitions, lexiques, extracteurs et gloss map.
-          Les règles sauvegardées dans le RuleWorkbench viendront ensuite s’y ajouter.
+          Édite ici le socle global partagé par toutes les règles d’annotation.
+          Les sections fréquentes sont maintenant guidées. Le `gloss_map` reste en YAML libre.
         </p>
       </div>
 
@@ -37,44 +39,37 @@ onMounted(async () => {
     <p v-if="store.statusMessage" class="status-line">{{ store.statusMessage }}</p>
 
     <div class="editor-grid">
-      <section class="card">
-        <h3>POS definitions</h3>
-        <textarea
-            class="editor"
-            :value="store.draft.posDefinitionsYaml"
-            @input="store.patchDraft({ posDefinitionsYaml: ($event.target as HTMLTextAreaElement).value })"
-        />
-      </section>
+      <StringListEditor
+          title="POS definitions"
+          :model-value="store.draft.posDefinitionsYaml"
+          help-text="Liste globale des POS reconnus."
+          empty-label="No POS definitions yet."
+          @update:model-value="store.patchDraft({ posDefinitionsYaml: $event })"
+      />
 
-      <section class="card">
-        <h3>Feature definitions</h3>
-        <textarea
-            class="editor"
-            :value="store.draft.featDefinitionsYaml"
-            @input="store.patchDraft({ featDefinitionsYaml: ($event.target as HTMLTextAreaElement).value })"
-        />
-      </section>
+      <StringListEditor
+          title="Feature definitions"
+          :model-value="store.draft.featDefinitionsYaml"
+          help-text="Liste globale des features CoNLL-U reconnues."
+          empty-label="No feature definitions yet."
+          @update:model-value="store.patchDraft({ featDefinitionsYaml: $event })"
+      />
 
-      <section class="card">
-        <h3>Lexicons</h3>
-        <textarea
-            class="editor tall"
-            :value="store.draft.lexiconsYaml"
-            @input="store.patchDraft({ lexiconsYaml: ($event.target as HTMLTextAreaElement).value })"
-        />
-      </section>
+      <LexiconEditor
+          :model-value="store.draft.lexiconsYaml"
+          @update:model-value="store.patchDraft({ lexiconsYaml: $event })"
+      />
 
-      <section class="card">
-        <h3>Extractors</h3>
-        <textarea
-            class="editor tall"
-            :value="store.draft.extractorsYaml"
-            @input="store.patchDraft({ extractorsYaml: ($event.target as HTMLTextAreaElement).value })"
-        />
-      </section>
+      <ExtractorEditor
+          :model-value="store.draft.extractorsYaml"
+          @update:model-value="store.patchDraft({ extractorsYaml: $event })"
+      />
 
       <section class="card full">
         <h3>Gloss map</h3>
+        <p class="help">
+          Cette section reste en YAML libre pour l’instant, car sa structure peut vite devenir plus variée.
+        </p>
         <textarea
             class="editor"
             :value="store.draft.glossMapYaml"
@@ -167,6 +162,11 @@ onMounted(async () => {
   margin-top: 0;
 }
 
+.help {
+  margin: 4px 0 12px;
+  color: #6b7280;
+}
+
 .editor {
   width: 100%;
   min-height: 180px;
@@ -177,10 +177,6 @@ onMounted(async () => {
   font: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   background: #fff;
-}
-
-.editor.tall {
-  min-height: 260px;
 }
 
 pre {
