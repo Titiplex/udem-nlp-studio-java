@@ -3,10 +3,7 @@ package org.titiplex.app.bridge;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.titiplex.backend.dto.*;
-import org.titiplex.backend.service.RuleEditorService;
-import org.titiplex.backend.service.RuleSchemaService;
-import org.titiplex.backend.service.RuleService;
-import org.titiplex.backend.service.WorkspaceEntryService;
+import org.titiplex.backend.service.*;
 
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -20,15 +17,21 @@ public class AppBridge {
     private final RuleSchemaService ruleSchemaService;
     private final RuleEditorService ruleEditorService;
     private final WorkspaceEntryService workspaceEntryService;
+    private final AnnotationSettingsService annotationSettingsService;
+    private final AnnotationConfigComposerService annotationConfigComposerService;
 
     public AppBridge(RuleService ruleService,
                      RuleSchemaService ruleSchemaService,
                      RuleEditorService ruleEditorService,
-                     WorkspaceEntryService workspaceEntryService) {
+                     WorkspaceEntryService workspaceEntryService,
+                     AnnotationSettingsService annotationSettingsService,
+                     AnnotationConfigComposerService annotationConfigComposerService) {
         this.ruleService = ruleService;
         this.ruleSchemaService = ruleSchemaService;
         this.ruleEditorService = ruleEditorService;
         this.workspaceEntryService = workspaceEntryService;
+        this.annotationSettingsService = annotationSettingsService;
+        this.annotationConfigComposerService = annotationConfigComposerService;
     }
 
     public String ping() {
@@ -105,6 +108,40 @@ public class AppBridge {
             return write(BridgeResponse.ok(workspaceEntryService.exportConllu(dto)));
         } catch (Exception e) {
             return write(BridgeResponse.error("CoNLL-U export failed: " + e.getMessage()));
+        }
+    }
+
+    public String getAnnotationSettings() {
+        return safe(() -> {
+            AnnotationSettingsDto dto = annotationSettingsService.getSettings();
+            return new AnnotationSettingsDto(
+                    dto.posDefinitionsYaml(),
+                    dto.featDefinitionsYaml(),
+                    dto.lexiconsYaml(),
+                    dto.extractorsYaml(),
+                    dto.glossMapYaml(),
+                    dto.baseYamlPreview(),
+                    annotationConfigComposerService.buildEffectiveYamlPreview()
+            );
+        });
+    }
+
+    public String saveAnnotationSettings(String payloadJson) {
+        try {
+            AnnotationSettingsDto dto = objectMapper.readValue(payloadJson, AnnotationSettingsDto.class);
+            AnnotationSettingsDto saved = annotationSettingsService.saveSettings(dto);
+
+            return write(BridgeResponse.ok(new AnnotationSettingsDto(
+                    saved.posDefinitionsYaml(),
+                    saved.featDefinitionsYaml(),
+                    saved.lexiconsYaml(),
+                    saved.extractorsYaml(),
+                    saved.glossMapYaml(),
+                    saved.baseYamlPreview(),
+                    annotationConfigComposerService.buildEffectiveYamlPreview()
+            )));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Annotation settings save failed: " + e.getMessage()));
         }
     }
 

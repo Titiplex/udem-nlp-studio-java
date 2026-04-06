@@ -7,7 +7,6 @@ import org.titiplex.backend.model.RuleEntity;
 import org.titiplex.backend.model.WorkspaceEntryEntity;
 import org.titiplex.backend.repository.RuleRepository;
 import org.titiplex.backend.repository.WorkspaceEntryRepository;
-import org.titiplex.conllu.AnnotationConfig;
 import org.titiplex.io.RawTextReader;
 import org.titiplex.io.YamlRuleLoader;
 import org.titiplex.model.CorrectionEntry;
@@ -243,28 +242,25 @@ public class WorkspaceEntryService {
 
     private void applyCorrectionToEntity(WorkspaceEntryEntity entity) {
         CorrectionEntry correctionEntry = correctRawEntity(entity);
-        AnnotationConfig annotationConfig = annotationConfigComposerService.buildAnnotationConfig();
 
         entity.setCorrectedChujText(defaultString(correctionEntry.corrected().chujText()));
         entity.setCorrectedGlossText(defaultString(correctionEntry.corrected().glossText()));
         entity.setCorrectedTranslation(defaultString(correctionEntry.corrected().translation()));
-        entity.setConlluPreview(new ConlluPipeline(annotationConfig)
+        entity.setConlluPreview(new ConlluPipeline(annotationConfigComposerService.buildAnnotationConfig())
                 .toEntry(correctionEntry.corrected())
                 .toConlluString());
     }
 
     private String buildLiveConlluPreview(WorkspaceEntryEntity entity, boolean preferCorrected) {
-        AnnotationConfig annotationConfig = annotationConfigComposerService.buildAnnotationConfig();
-
         if (preferCorrected && hasUsableCorrectedText(entity)) {
             CorrectionEntry normalizedCorrected = normalizeAlreadyCorrectedText(entity);
-            return new ConlluPipeline(annotationConfig)
+            return new ConlluPipeline(annotationConfigComposerService.buildAnnotationConfig())
                     .toEntry(normalizedCorrected.corrected())
                     .toConlluString();
         }
 
         CorrectionEntry correctionEntry = correctRawEntity(entity);
-        return new ConlluPipeline(annotationConfig)
+        return new ConlluPipeline(annotationConfigComposerService.buildAnnotationConfig())
                 .toEntry(correctionEntry.corrected())
                 .toConlluString();
     }

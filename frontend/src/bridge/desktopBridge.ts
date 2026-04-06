@@ -129,6 +129,16 @@ export interface TextExport {
     content: string
 }
 
+export interface AnnotationSettings {
+    posDefinitionsYaml: string
+    featDefinitionsYaml: string
+    lexiconsYaml: string
+    extractorsYaml: string
+    glossMapYaml: string
+    baseYamlPreview: string
+    effectiveYamlPreview: string
+}
+
 export interface DesktopBridge {
     ping(): string
 
@@ -151,6 +161,10 @@ export interface DesktopBridge {
     exportRawText(payloadJson: string): string
 
     exportConllu(payloadJson: string): string
+
+    getAnnotationSettings(): string
+
+    saveAnnotationSettings(payloadJson: string): string
 
     listRuleDescriptors(): string
 
