@@ -11,6 +11,19 @@ The build is split in two layers:
 
 1. Maven builds the shaded jars
 2. `jpackage` builds native packages from those jars
+3. GitHub Actions publishes native GitHub Releases
+
+## Components
+
+### Desktop application
+
+Main class:
+
+- `org.titiplex.app.DesktopApp`
+
+Expected shaded jar:
+
+- `app/target/nlp-studio-app-<version>-all.jar`
 
 ### Desktop application
 
@@ -150,13 +163,58 @@ If the icon files are missing, packaging still works.
 
 ---
 
-## Suggested release flow
+## Release model
 
-1. Commit and push to main
-2. Tag a version such as v0.1.0
-3. GitHub Actions builds native artifacts on:
-    - Windows
-    - Linux
-    - macOS
-4. Download artifacts from the workflow run
-5. Optionally publish them in a GitHub Release
+This repository uses two independent release tracks:
+
+- app releases use tags matching app-v*
+- CLI releases use tags matching cli-v*
+
+Examples:
+
+- `app-v0.1.0`
+- `cli-v0.1.0`
+
+## One-command release triggers
+
+### App release
+
+````shell
+./scripts/publish-app-release.sh 0.1.0
+````
+
+### CLI release
+
+````shell
+./scripts/publish-cli-release.sh 0.1.0
+````
+
+### With Make
+
+````shell
+make release-app VERSION=0.1.0
+make release-cli VERSION=0.1.0
+````
+
+## Published assets
+
+### App release assets
+
+- `nlp-studio-windows-<version>.msi`
+- `nlp-studio-linux-<version>.deb`
+- `nlp-studio-macos-<version>.dmg`
+
+### CLI release assets
+
+- `nlp-studio-cli-windows-<version>.exe`
+- `nlp-studio-cli-linux-<version>.tar.gz`
+- `nlp-studio-cli-macos-<version>.tar.gz`
+
+--- 
+
+## Notes
+
+- App and CLI releases are published independently.
+- Workflow artifacts are only used internally during CI.
+- Final binaries are attached to GitHub Releases.
+- `workflow_dispatch` is available once the workflows are present on the default branch.

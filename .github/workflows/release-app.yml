@@ -1,13 +1,13 @@
-name: Release native packages
+name: Release app
 
 on:
   push:
     tags:
-      - "v*"
+      - "app-v*"
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version without the leading v (example: 0.1.0)"
+        description: "App release version without the leading app-v (example: 0.1.0)"
         required: true
         type: string
       prerelease:
@@ -33,11 +33,11 @@ jobs:
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             VERSION="${{ inputs.version }}"
-            TAG="v${VERSION}"
+            TAG="app-v${VERSION}"
             PRERELEASE="${{ inputs.prerelease }}"
           else
             TAG="${GITHUB_REF_NAME}"
-            VERSION="${TAG#v}"
+            VERSION="${TAG#app-v}"
             PRERELEASE="false"
           fi
 
@@ -45,7 +45,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
-  build-native:
+  build-app:
     needs: resolve-version
     strategy:
       fail-fast: false
@@ -88,24 +88,16 @@ jobs:
         run: |
           chmod +x packaging/app/linux/build.sh || true
           chmod +x packaging/app/macos/build.sh || true
-          chmod +x packaging/cli/linux/build.sh || true
-          chmod +x packaging/cli/linux/install.sh || true
-          chmod +x packaging/cli/macos/build.sh || true
-          chmod +x packaging/cli/macos/install.sh || true
 
       - name: Prepare release-assets directory
         shell: bash
         run: mkdir -p release-assets
 
-      - name: Build desktop app on Linux
+      - name: Build app on Linux
         if: runner.os == 'Linux'
         run: bash packaging/app/linux/build.sh "$APP_VERSION" deb
 
-      - name: Build CLI on Linux
-        if: runner.os == 'Linux'
-        run: bash packaging/cli/linux/build.sh "$APP_VERSION" app-image
-
-      - name: Collect Linux assets
+      - name: Collect Linux app asset
         if: runner.os == 'Linux'
         shell: bash
         run: |
@@ -113,18 +105,11 @@ jobs:
           test -n "$APP_DEB"
           cp "$APP_DEB" "release-assets/nlp-studio-linux-${APP_VERSION}.deb"
 
-          cd core/target/installer
-          tar -czf "$GITHUB_WORKSPACE/release-assets/chuj-linux-${APP_VERSION}.tar.gz" chuj
-
-      - name: Build desktop app on macOS
+      - name: Build app on macOS
         if: runner.os == 'macOS'
         run: bash packaging/app/macos/build.sh "$APP_VERSION" dmg
 
-      - name: Build CLI on macOS
-        if: runner.os == 'macOS'
-        run: bash packaging/cli/macos/build.sh "$APP_VERSION" app-image
-
-      - name: Collect macOS assets
+      - name: Collect macOS app asset
         if: runner.os == 'macOS'
         shell: bash
         run: |
@@ -132,20 +117,12 @@ jobs:
           test -n "$APP_DMG"
           cp "$APP_DMG" "release-assets/nlp-studio-macos-${APP_VERSION}.dmg"
 
-          cd core/target/installer
-          tar -czf "$GITHUB_WORKSPACE/release-assets/chuj-macos-${APP_VERSION}.tar.gz" chuj
-
-      - name: Build desktop app on Windows
+      - name: Build app on Windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./packaging/app/windows/build.ps1 -Version $env:APP_VERSION -Type msi
 
-      - name: Build CLI on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./packaging/cli/windows/build.ps1 -Version $env:APP_VERSION -Type exe
-
-      - name: Collect Windows assets
+      - name: Collect Windows app asset
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -153,23 +130,19 @@ jobs:
           if (-not $appMsi) { throw "No MSI found in app\target\installer" }
           Copy-Item $appMsi.FullName "release-assets\nlp-studio-windows-$env:APP_VERSION.msi"
 
-          $cliExe = Get-ChildItem "core\target\installer" -Filter *.exe | Select-Object -First 1
-          if (-not $cliExe) { throw "No EXE found in core\target\installer" }
-          Copy-Item $cliExe.FullName "release-assets\chuj-windows-$env:APP_VERSION.exe"
-
-      - name: Upload packaged assets
+      - name: Upload app assets
         uses: actions/upload-artifact@v4
         with:
-          name: release-assets-${{ runner.os }}
+          name: app-release-assets-${{ runner.os }}
           path: release-assets/*
           if-no-files-found: error
 
   publish-release:
-    needs: [ resolve-version, build-native ]
+    needs: [ resolve-version, build-app ]
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download all artifacts
+      - name: Download all app artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
@@ -178,34 +151,34 @@ jobs:
         shell: bash
         run: find dist -type f | sort
 
-      - name: Prepare release notes
+      - name: Prepare app release notes
         shell: bash
         env:
           TAG: ${{ needs.resolve-version.outputs.tag }}
           VERSION: ${{ needs.resolve-version.outputs.version }}
         run: |
-          cat > release-notes.md <<EOF
-          Native release for ${TAG}
+          cat > release-notes-app.md <<EOF
+          NLP Studio desktop application release for ${TAG}
 
           Included assets:
           - nlp-studio-windows-${VERSION}.msi
           - nlp-studio-linux-${VERSION}.deb
           - nlp-studio-macos-${VERSION}.dmg
-          - chuj-windows-${VERSION}.exe
-          - chuj-linux-${VERSION}.tar.gz
-          - chuj-macos-${VERSION}.tar.gz
+
+          Installation notes:
+          - Windows: run the MSI installer
+          - Linux: install the DEB package with your package manager
+          - macOS: open the DMG and drag the app to Applications
 
           Notes:
-          - The desktop application ships as a native installer per OS.
-          - The CLI ships as a native Windows launcher and as app-image archives on Linux/macOS.
-          - Linux/macOS CLI archives can be installed into PATH using the scripts in packaging/cli.
+          - This release contains the desktop application only.
+          - The CLI is released separately under tags matching cli-v*.
           EOF
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release for app
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.resolve-version.outputs.tag }}
-          VERSION: ${{ needs.resolve-version.outputs.version }}
           PRERELEASE: ${{ needs.resolve-version.outputs.prerelease }}
         shell: bash
         run: |
@@ -218,10 +191,8 @@ jobs:
             dist/**/*.msi \
             dist/**/*.deb \
             dist/**/*.dmg \
-            dist/**/*.exe \
-            dist/**/*.tar.gz \
-            --title "NLP Studio $TAG" \
-            --notes-file release-notes.md \
+            --title "NLP Studio App ${TAG}" \
+            --notes-file release-notes-app.md \
             --generate-notes \
             --verify-tag \
             $PRERELEASE_FLAG
