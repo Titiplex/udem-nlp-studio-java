@@ -1,5 +1,5 @@
 param(
-    [string]$TargetDir = "$env:LOCALAPPDATA\Programs\chuj"
+    [string]$TargetDir = "$env:LOCALAPPDATA\Programs\nlp-studio-cli"
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,4 +27,4 @@ $newPath = ($paths + $TargetDir) -join ';'
 [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
 
 Write-Host "Added to user PATH: $TargetDir"
-Write-Host "Restart your terminal to use 'chuj'."
+Write-Host "Restart your terminal to use 'nlp-studio-cli'."

@@ -7,7 +7,7 @@ TYPE="${2:-app-image}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$REPO_ROOT"
 
-APP_NAME="chuj"
+APP_NAME="nlp-studio-cli"
 MAIN_CLASS="org.titiplex.Main"
 JAR_NAME="nlp-studio-core-${VERSION}-all.jar"
 INPUT_DIR="$REPO_ROOT/core/target"
@@ -23,7 +23,7 @@ if [[ ! -f "$INPUT_DIR/$JAR_NAME" ]]; then
   exit 1
 fi
 
-ICON_PATH="$REPO_ROOT/packaging/resources/cli/chuj.png"
+ICON_PATH="$REPO_ROOT/packaging/resources/cli/nlp-studio-cli.png"
 
 JPACKAGE_ARGS=(
   --type "$TYPE"
@@ -34,7 +34,7 @@ JPACKAGE_ARGS=(
   --main-class "$MAIN_CLASS"
   --dest "$DEST_DIR"
   --vendor "Titiplex"
-  --description "Chuj NLP command line tools"
+  --description "NLP Studio command line tools"
 )
 
 if [[ -f "$ICON_PATH" ]]; then

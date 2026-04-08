@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path "$PSScriptRoot\..\..\.."
 Set-Location $RepoRoot
 
-$AppName = "chuj"
+$AppName = "nlp-studio-cli"
 $Vendor = "Titiplex"
 $MainClass = "org.titiplex.Main"
 $JarName = "nlp-studio-core-$Version-all.jar"
@@ -26,7 +26,7 @@ if (-not (Test-Path $JarPath))
     throw "Jar not found: $JarPath"
 }
 
-$IconPath = Join-Path $RepoRoot "packaging\resources\cli\chuj.ico"
+$IconPath = Join-Path $RepoRoot "packaging\resources\cli\nlp-studio-cli.ico"
 $HasIcon = Test-Path $IconPath
 
 $jpackageArgs = @(
@@ -38,7 +38,7 @@ $jpackageArgs = @(
     "--main-class", $MainClass,
     "--dest", $DestDir,
     "--vendor", $Vendor,
-    "--description", "Chuj NLP command line tools",
+    "--description", "NLP Studio command line tools",
     "--win-console"
 )
 
