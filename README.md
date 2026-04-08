@@ -66,16 +66,21 @@ The `core` module provides a command-line interface.
 ### Build
 
 ```shell
-mvn clean package
+mvn -pl core -am clean package
 ```
+
+This produces the following file :
+
+````
+core/target/nlp-studio-core-0.1.0-all.jar
+````
 
 ### Available commands
 
 1. Prepare CoNLL-U from an input document
 
 ````shell
-java -cp core/target/nlp-studio-core-0.1.0.jar org.titiplex.Main prepare input.docx correction.yaml annotation.yaml
-output.conllu
+java -cp core/target/nlp-studio-core-0.1.0.jar org.titiplex.Main prepare input.docx correction.yaml annotation.yaml output.conllu
 ````
 
 This command:
@@ -88,13 +93,13 @@ This command:
 2. Generate a corrected DOCX
 
 ````shell
-java -cp core/target/nlp-studio-core-0.1.0.jar org.titiplex.Main correct-docx input.docx correction.yaml corrected.docx
+java -cp core/target/nlp-studio-core-0.1.0-all.jar org.titiplex.Main correct-docx input.docx correction.yaml corrected.docx
 ````
 
 3. Generate corpus statistics
 
 ````shell
-java -cp core/target/nlp-studio-core-0.1.0.jar org.titiplex.Main stats input.docx correction.yaml stats.txt
+java -cp core/target/nlp-studio-core-0.1.0-all.jar org.titiplex.Main stats input.docx correction.yaml stats.txt
 ````
 
 ### Backward-compatible mode
@@ -102,7 +107,7 @@ java -cp core/target/nlp-studio-core-0.1.0.jar org.titiplex.Main stats input.doc
 The legacy 4-argument mode is still supported:
 
 ````shell
-java -cp core/target/nlp-studio-core-0.1.0.jar org.titiplex.Main input.docx correction.yaml annotation.yaml output.conllu
+java -cp core/target/nlp-studio-core-0.1.0-all.jar org.titiplex.Main input.docx correction.yaml annotation.yaml output.conllu
 ````
 
 ---
