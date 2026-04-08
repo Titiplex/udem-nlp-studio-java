@@ -1,0 +1,83 @@
+name: Native packaging
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
+
+      - name: Linux packaging prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot rpm
+
+      - name: Build desktop app on Linux
+        if: runner.os == 'Linux'
+        run: bash packaging/app/linux/build.sh 0.1.0 deb
+
+      - name: Build CLI on Linux
+        if: runner.os == 'Linux'
+        run: bash packaging/cli/linux/build.sh 0.1.0 app-image
+
+      - name: Build desktop app on macOS
+        if: runner.os == 'macOS'
+        run: bash packaging/app/macos/build.sh 0.1.0 dmg
+
+      - name: Build CLI on macOS
+        if: runner.os == 'macOS'
+        run: bash packaging/cli/macos/build.sh 0.1.0 app-image
+
+      - name: Build desktop app on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/app/windows/build.ps1 -Version 0.1.0 -Type msi
+
+      - name: Build CLI on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/cli/windows/build.ps1 -Version 0.1.0 -Type exe
+
+      - name: Upload desktop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}
+          path: app/target/installer/**
+
+      - name: Upload CLI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ runner.os }}
+          path: core/target/installer/**
