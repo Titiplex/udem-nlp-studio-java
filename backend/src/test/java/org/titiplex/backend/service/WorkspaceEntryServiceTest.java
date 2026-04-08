@@ -221,9 +221,9 @@ class WorkspaceEntryServiceTest {
         EntryDetailDto saved = workspaceEntryService.saveEntry(new EntryDetailDto(
                 null,
                 1,
-                "Ix naq",
-                "A1 ganar",
-                "Il gagne.",
+                "ix-naq",
+                "A1-B3-ganar",
+                "I beat you",
                 "",
                 "",
                 "",
