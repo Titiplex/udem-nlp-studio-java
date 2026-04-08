@@ -255,53 +255,6 @@
                             </execution>
                         </executions>
                     </plugin>
-
-                    <!-- Prépare le runtime natif pour jpackage -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <version>3.6.1</version>
-                        <executions>
-                            <execution>
-                                <id>copy-runtime-dependencies</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>copy-dependencies</goal>
-                                </goals>
-                                <configuration>
-                                    <outputDirectory>${project.build.directory}/jpackage/input/lib</outputDirectory>
-                                    <includeScope>runtime</includeScope>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.3.0</version>
-                        <executions>
-                            <execution>
-                                <id>prepare-jpackage-layout-windows</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <skip>${!os.detected.name.startsWith('windows')}</skip>
-                                    <executable>cmd</executable>
-                                    <arguments>
-                                        <argument>/c</argument>
-                                        <argument>
-                                            if not exist "${project.build.directory}\jpackage\input" mkdir "${project.build.directory}\jpackage\input" &amp;&amp;
-                                            if not exist "${project.build.directory}\jpackage\input\lib" mkdir "${project.build.directory}\jpackage\input\lib" &amp;&amp;
-                                            copy /Y "${project.build.directory}\${project.artifactId}-${project.version}-all.jar" "${project.build.directory}\jpackage\input\"
-                                        </argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
