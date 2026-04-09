@@ -56,6 +56,7 @@ jobs:
 
     env:
       APP_VERSION: ${{ needs.resolve-version.outputs.version }}
+      CLI_APP_NAME: nlpstudio
 
     steps:
       - name: Checkout
@@ -92,28 +93,48 @@ jobs:
         if: runner.os == 'Linux'
         run: bash packaging/cli/linux/build.sh "$APP_VERSION" app-image
 
+      - name: Inspect Linux installer output
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ls -la core/target/installer
+          test -d "core/target/installer/$CLI_APP_NAME"
+
       - name: Collect Linux CLI asset
         if: runner.os == 'Linux'
         shell: bash
         run: |
           cd core/target/installer
-          tar -czf "$GITHUB_WORKSPACE/release-assets/nlp-studio-cli-linux-${APP_VERSION}.tar.gz" nlp-studio-cli
+          tar -czf "$GITHUB_WORKSPACE/release-assets/nlpstudio-linux-${APP_VERSION}.tar.gz" "$CLI_APP_NAME"
 
       - name: Build CLI on macOS
         if: runner.os == 'macOS'
         run: bash packaging/cli/macos/build.sh "$APP_VERSION" app-image
+
+      - name: Inspect macOS installer output
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          ls -la core/target/installer
+          test -d "core/target/installer/$CLI_APP_NAME"
 
       - name: Collect macOS CLI asset
         if: runner.os == 'macOS'
         shell: bash
         run: |
           cd core/target/installer
-          tar -czf "$GITHUB_WORKSPACE/release-assets/nlp-studio-cli-macos-${APP_VERSION}.tar.gz" nlp-studio-cli
+          tar -czf "$GITHUB_WORKSPACE/release-assets/nlpstudio-macos-${APP_VERSION}.tar.gz" "$CLI_APP_NAME"
 
       - name: Build CLI on Windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./packaging/cli/windows/build.ps1 -Version $env:APP_VERSION -Type exe
+
+      - name: Inspect Windows installer output
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem "core\target\installer" | Format-Table Name, Length, FullName -AutoSize
 
       - name: Collect Windows CLI asset
         if: runner.os == 'Windows'
@@ -121,7 +142,7 @@ jobs:
         run: |
           $cliExe = Get-ChildItem "core\target\installer" -Filter *.exe | Select-Object -First 1
           if (-not $cliExe) { throw "No EXE found in core\target\installer" }
-          Copy-Item $cliExe.FullName "release-assets\nlp-studio-cli-windows-$env:APP_VERSION.exe"
+          Copy-Item $cliExe.FullName "release-assets\nlpstudio-windows-$env:APP_VERSION.exe"
 
       - name: Upload CLI assets
         uses: actions/upload-artifact@v4
@@ -154,12 +175,12 @@ jobs:
           NLP Studio CLI release for ${TAG}
 
           Included assets:
-          - nlp-studio-cli-windows-${VERSION}.exe
-          - nlp-studio-cli-linux-${VERSION}.tar.gz
-          - nlp-studio-cli-macos-${VERSION}.tar.gz
+          - nlpstudio-windows-${VERSION}.exe
+          - nlpstudio-linux-${VERSION}.tar.gz
+          - nlpstudio-macos-${VERSION}.tar.gz
 
           Installation notes:
-          - Windows: run the EXE installer/launcher package
+          - Windows: run the EXE installer
           - Linux/macOS: extract the archive and optionally install into PATH using the scripts in packaging/cli
 
           Notes:
