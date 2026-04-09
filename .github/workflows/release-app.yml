@@ -1,0 +1,198 @@
+name: Release app
+
+on:
+  push:
+    tags:
+      - "app-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "App release version without the leading app-v (example: 0.1.0)"
+        required: true
+        type: string
+      prerelease:
+        description: "Publish as prerelease"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
+    steps:
+      - name: Resolve version and tag
+        id: resolve
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            TAG="app-v${VERSION}"
+            PRERELEASE="${{ inputs.prerelease }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG#app-v}"
+            PRERELEASE="false"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+  build-app:
+    needs: resolve-version
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      APP_VERSION: ${{ needs.resolve-version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Linux packaging prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot rpm
+
+      - name: Make shell scripts executable
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x packaging/app/linux/build.sh || true
+          chmod +x packaging/app/macos/build.sh || true
+
+      - name: Prepare release-assets directory
+        shell: bash
+        run: mkdir -p release-assets
+
+      - name: Build app on Linux
+        if: runner.os == 'Linux'
+        run: bash packaging/app/linux/build.sh "$APP_VERSION" deb
+
+      - name: Collect Linux app asset
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          APP_DEB="$(find app/target/installer -maxdepth 1 -type f -name '*.deb' | head -n 1)"
+          test -n "$APP_DEB"
+          cp "$APP_DEB" "release-assets/nlp-studio-linux-${APP_VERSION}.deb"
+
+      - name: Build app on macOS
+        if: runner.os == 'macOS'
+        run: bash packaging/app/macos/build.sh "$APP_VERSION" dmg
+
+      - name: Collect macOS app asset
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          APP_DMG="$(find app/target/installer -maxdepth 1 -type f -name '*.dmg' | head -n 1)"
+          test -n "$APP_DMG"
+          cp "$APP_DMG" "release-assets/nlp-studio-macos-${APP_VERSION}.dmg"
+
+      - name: Build app on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/app/windows/build.ps1 -Version $env:APP_VERSION -Type msi
+
+      - name: Collect Windows app asset
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $appMsi = Get-ChildItem "app\target\installer" -Filter *.msi | Select-Object -First 1
+          if (-not $appMsi) { throw "No MSI found in app\target\installer" }
+          Copy-Item $appMsi.FullName "release-assets\nlp-studio-windows-$env:APP_VERSION.msi"
+
+      - name: Upload app assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-assets-${{ runner.os }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish-release:
+    needs: [ resolve-version, build-app ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all app artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Inspect downloaded files
+        shell: bash
+        run: find dist -type f | sort
+
+      - name: Prepare app release notes
+        shell: bash
+        env:
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          cat > release-notes-app.md <<EOF
+          NLP Studio desktop application release for ${TAG}
+
+          Included assets:
+          - nlp-studio-windows-${VERSION}.msi
+          - nlp-studio-linux-${VERSION}.deb
+          - nlp-studio-macos-${VERSION}.dmg
+
+          Installation notes:
+          - Windows: run the MSI installer
+          - Linux: install the DEB package with your package manager
+          - macOS: open the DMG and drag the app to Applications
+
+          Notes:
+          - This release contains the desktop application only.
+          - The CLI is released separately under tags matching cli-v*.
+          EOF
+
+      - name: Create GitHub Release for app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+          PRERELEASE: ${{ needs.resolve-version.outputs.prerelease }}
+        shell: bash
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ "$PRERELEASE" == "true" ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            dist/**/*.msi \
+            dist/**/*.deb \
+            dist/**/*.dmg \
+            --title "NLP Studio App ${TAG}" \
+            --notes-file release-notes-app.md \
+            --generate-notes \
+            --verify-tag \
+            $PRERELEASE_FLAG

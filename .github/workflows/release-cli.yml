@@ -1,0 +1,189 @@
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - "cli-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "CLI release version without the leading cli-v (example: 0.1.0)"
+        required: true
+        type: string
+      prerelease:
+        description: "Publish as prerelease"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
+    steps:
+      - name: Resolve version and tag
+        id: resolve
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            TAG="cli-v${VERSION}"
+            PRERELEASE="${{ inputs.prerelease }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG#cli-v}"
+            PRERELEASE="false"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+  build-cli:
+    needs: resolve-version
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      APP_VERSION: ${{ needs.resolve-version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Linux packaging prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot rpm
+
+      - name: Make shell scripts executable
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x packaging/cli/linux/build.sh || true
+          chmod +x packaging/cli/linux/install.sh || true
+          chmod +x packaging/cli/macos/build.sh || true
+          chmod +x packaging/cli/macos/install.sh || true
+
+      - name: Prepare release-assets directory
+        shell: bash
+        run: mkdir -p release-assets
+
+      - name: Build CLI on Linux
+        if: runner.os == 'Linux'
+        run: bash packaging/cli/linux/build.sh "$APP_VERSION" app-image
+
+      - name: Collect Linux CLI asset
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cd core/target/installer
+          tar -czf "$GITHUB_WORKSPACE/release-assets/nlp-studio-cli-linux-${APP_VERSION}.tar.gz" nlp-studio-cli
+
+      - name: Build CLI on macOS
+        if: runner.os == 'macOS'
+        run: bash packaging/cli/macos/build.sh "$APP_VERSION" app-image
+
+      - name: Collect macOS CLI asset
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd core/target/installer
+          tar -czf "$GITHUB_WORKSPACE/release-assets/nlp-studio-cli-macos-${APP_VERSION}.tar.gz" nlp-studio-cli
+
+      - name: Build CLI on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/cli/windows/build.ps1 -Version $env:APP_VERSION -Type exe
+
+      - name: Collect Windows CLI asset
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $cliExe = Get-ChildItem "core\target\installer" -Filter *.exe | Select-Object -First 1
+          if (-not $cliExe) { throw "No EXE found in core\target\installer" }
+          Copy-Item $cliExe.FullName "release-assets\nlp-studio-cli-windows-$env:APP_VERSION.exe"
+
+      - name: Upload CLI assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-release-assets-${{ runner.os }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish-release:
+    needs: [ resolve-version, build-cli ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all CLI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Inspect downloaded files
+        shell: bash
+        run: find dist -type f | sort
+
+      - name: Prepare CLI release notes
+        shell: bash
+        env:
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          cat > release-notes-cli.md <<EOF
+          NLP Studio CLI release for ${TAG}
+
+          Included assets:
+          - nlp-studio-cli-windows-${VERSION}.exe
+          - nlp-studio-cli-linux-${VERSION}.tar.gz
+          - nlp-studio-cli-macos-${VERSION}.tar.gz
+
+          Installation notes:
+          - Windows: run the EXE installer/launcher package
+          - Linux/macOS: extract the archive and optionally install into PATH using the scripts in packaging/cli
+
+          Notes:
+          - This release contains the CLI only.
+          - The desktop application is released separately under tags matching app-v*.
+          EOF
+
+      - name: Create GitHub Release for CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+          PRERELEASE: ${{ needs.resolve-version.outputs.prerelease }}
+        shell: bash
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ "$PRERELEASE" == "true" ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            dist/**/*.exe \
+            dist/**/*.tar.gz \
+            --title "NLP Studio CLI ${TAG}" \
+            --notes-file release-notes-cli.md \
+            --generate-notes \
+            --verify-tag \
+            $PRERELEASE_FLAG
