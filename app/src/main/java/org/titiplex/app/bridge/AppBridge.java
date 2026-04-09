@@ -2,9 +2,11 @@ package org.titiplex.app.bridge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
+import org.titiplex.backend.concurrency.ConflictException;
 import org.titiplex.backend.dto.*;
 import org.titiplex.backend.service.*;
 
+import java.nio.file.Path;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -19,19 +21,25 @@ public class AppBridge {
     private final WorkspaceEntryService workspaceEntryService;
     private final AnnotationSettingsService annotationSettingsService;
     private final AnnotationConfigComposerService annotationConfigComposerService;
+    private final ProjectContextService projectContextService;
+    private final ProjectSecretService projectSecretService;
 
     public AppBridge(RuleService ruleService,
                      RuleSchemaService ruleSchemaService,
                      RuleEditorService ruleEditorService,
                      WorkspaceEntryService workspaceEntryService,
                      AnnotationSettingsService annotationSettingsService,
-                     AnnotationConfigComposerService annotationConfigComposerService) {
+                     AnnotationConfigComposerService annotationConfigComposerService,
+                     ProjectContextService projectContextService,
+                     ProjectSecretService projectSecretService) {
         this.ruleService = ruleService;
         this.ruleSchemaService = ruleSchemaService;
         this.ruleEditorService = ruleEditorService;
         this.workspaceEntryService = workspaceEntryService;
         this.annotationSettingsService = annotationSettingsService;
         this.annotationConfigComposerService = annotationConfigComposerService;
+        this.projectContextService = projectContextService;
+        this.projectSecretService = projectSecretService;
     }
 
     public String ping() {
@@ -40,6 +48,54 @@ public class AppBridge {
 
     public String getAppInfo() {
         return safe(() -> new AppInfo("NLP Studio", "0.1.0"));
+    }
+
+    public String listProjects() {
+        return safe(projectContextService::listKnownProjects);
+    }
+
+    public String getActiveProject() {
+        return safe(projectContextService::getActiveProject);
+    }
+
+    public String registerProject(String payloadJson) {
+        try {
+            RegisterProjectRequestDto dto = objectMapper.readValue(payloadJson, RegisterProjectRequestDto.class);
+            return write(BridgeResponse.ok(projectContextService.registerProject(Path.of(dto.manifestPath()))));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Cannot register project: " + e.getMessage()));
+        }
+    }
+
+    public String createProject(String payloadJson) {
+        try {
+            CreateProjectRequestDto dto = objectMapper.readValue(payloadJson, CreateProjectRequestDto.class);
+            return write(BridgeResponse.ok(projectContextService.createProject(dto)));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Cannot create project: " + e.getMessage()));
+        }
+    }
+
+    public String switchProject(String payloadJson) {
+        try {
+            SwitchProjectRequestDto dto = objectMapper.readValue(payloadJson, SwitchProjectRequestDto.class);
+            projectContextService.switchActiveProject(UUID.fromString(dto.projectId()));
+            return write(BridgeResponse.ok(projectContextService.getActiveProject()));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Cannot switch project: " + e.getMessage()));
+        }
+    }
+
+    public String saveProjectSecrets(String payloadJson) {
+        try {
+            SaveSecretsRequestDto dto = objectMapper.readValue(payloadJson, SaveSecretsRequestDto.class);
+            UUID projectId = UUID.fromString(dto.projectId());
+            projectSecretService.saveSecret(projectId, dto.usernameRef(), dto.username());
+            projectSecretService.saveSecret(projectId, dto.passwordRef(), dto.password());
+            return write(BridgeResponse.ok("ok"));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Cannot save secrets: " + e.getMessage()));
+        }
     }
 
     public String listRules() {
@@ -70,6 +126,8 @@ public class AppBridge {
         try {
             EntryDetailDto dto = objectMapper.readValue(payloadJson, EntryDetailDto.class);
             return write(BridgeResponse.ok(workspaceEntryService.saveEntry(dto)));
+        } catch (ConflictException e) {
+            return write(BridgeResponse.error("Conflict: " + e.getMessage()));
         } catch (Exception e) {
             return write(BridgeResponse.error("Save entry failed: " + e.getMessage()));
         }
@@ -121,7 +179,10 @@ public class AppBridge {
                     dto.extractorsYaml(),
                     dto.glossMapYaml(),
                     dto.baseYamlPreview(),
-                    annotationConfigComposerService.buildEffectiveYamlPreview()
+                    annotationConfigComposerService.buildEffectiveYamlPreview(),
+                    dto.version(),
+                    dto.updatedBy(),
+                    dto.updatedAt()
             );
         });
     }
@@ -130,7 +191,6 @@ public class AppBridge {
         try {
             AnnotationSettingsDto dto = objectMapper.readValue(payloadJson, AnnotationSettingsDto.class);
             AnnotationSettingsDto saved = annotationSettingsService.saveSettings(dto);
-
             return write(BridgeResponse.ok(new AnnotationSettingsDto(
                     saved.posDefinitionsYaml(),
                     saved.featDefinitionsYaml(),
@@ -138,8 +198,13 @@ public class AppBridge {
                     saved.extractorsYaml(),
                     saved.glossMapYaml(),
                     saved.baseYamlPreview(),
-                    annotationConfigComposerService.buildEffectiveYamlPreview()
+                    annotationConfigComposerService.buildEffectiveYamlPreview(),
+                    saved.version(),
+                    saved.updatedBy(),
+                    saved.updatedAt()
             )));
+        } catch (ConflictException e) {
+            return write(BridgeResponse.error("Conflict: " + e.getMessage()));
         } catch (Exception e) {
             return write(BridgeResponse.error("Annotation settings save failed: " + e.getMessage()));
         }
@@ -197,6 +262,8 @@ public class AppBridge {
             RuleDetailDto saved = ruleService.saveRule(dto);
             RuleDraftResultDto result = ruleEditorService.validate(saved);
             return write(BridgeResponse.ok(result));
+        } catch (ConflictException e) {
+            return write(BridgeResponse.error("Conflict: " + e.getMessage()));
         } catch (Exception e) {
             return write(BridgeResponse.error("Save failed: " + e.getMessage()));
         }

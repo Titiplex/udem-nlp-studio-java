@@ -1,5 +1,7 @@
 package org.titiplex.backend.dto;
 
+import java.time.Instant;
+
 public record AnnotationSettingsDto(
         String posDefinitionsYaml,
         String featDefinitionsYaml,
@@ -7,6 +9,9 @@ public record AnnotationSettingsDto(
         String extractorsYaml,
         String glossMapYaml,
         String baseYamlPreview,
-        String effectiveYamlPreview
+        String effectiveYamlPreview,
+        Long version,
+        String updatedBy,
+        Instant updatedAt
 ) {
 }

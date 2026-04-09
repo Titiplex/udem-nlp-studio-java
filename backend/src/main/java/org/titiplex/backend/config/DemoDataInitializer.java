@@ -3,24 +3,19 @@ package org.titiplex.backend.config;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
-import org.titiplex.backend.service.RuleService;
-import org.titiplex.backend.service.WorkspaceEntryService;
+import org.titiplex.backend.service.ProjectBootstrapService;
 
 @Component
 public class DemoDataInitializer implements ApplicationRunner {
 
-    private final RuleService ruleService;
-    private final WorkspaceEntryService workspaceEntryService;
+    private final ProjectBootstrapService projectBootstrapService;
 
-    public DemoDataInitializer(RuleService ruleService,
-                               WorkspaceEntryService workspaceEntryService) {
-        this.ruleService = ruleService;
-        this.workspaceEntryService = workspaceEntryService;
+    public DemoDataInitializer(ProjectBootstrapService projectBootstrapService) {
+        this.projectBootstrapService = projectBootstrapService;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        ruleService.seedDemoRulesIfEmpty();
-        workspaceEntryService.seedDemoEntriesIfEmpty();
+        projectBootstrapService.ensureLocalIdentityExists();
     }
 }

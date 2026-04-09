@@ -1,5 +1,6 @@
 package org.titiplex.backend.dto;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public record EntryDetailDto(
@@ -12,6 +13,9 @@ public record EntryDetailDto(
         String correctedGlossText,
         String correctedTranslation,
         boolean approved,
-        String conlluPreview
+        String conlluPreview,
+        Long version,
+        String updatedBy,
+        Instant updatedAt
 ) {
 }
