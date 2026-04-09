@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <UI>
+      <Dialog Id="ShortcutPromptDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15" Transparent="yes" NoPrefix="yes"
+                 Text="Additional options" />
+        <Control Id="Description" Type="Text" X="20" Y="30" Width="330" Height="40" Transparent="yes" NoPrefix="yes"
+                 Text="Choose the optional setup actions for [ProductName]." />
+
+        <Control Id="AddToPathCheckbox"
+                 Type="CheckBox"
+                 X="20"
+                 Y="90"
+                 Width="330"
+                 Height="17"
+                 Property="ADD_TO_PATH"
+                 CheckBoxValue="1"
+                 Text="Add nlpstudio to the PATH for this user" />
+
+        <Control Id="PathHint"
+                 Type="Text"
+                 X="35"
+                 Y="110"
+                 Width="310"
+                 Height="35"
+                 Transparent="yes"
+                 NoPrefix="yes"
+                 Text="This lets you run 'nlpstudio' from a new terminal without typing the full install path." />
+
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="Back">
+          <Publish Event="NewDialog" Value="InstallDirDlg">1</Publish>
+        </Control>
+
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="Next">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+        </Control>
+
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+          <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+        </Control>
+      </Dialog>
+    </UI>
+  </Fragment>
+</Wix>

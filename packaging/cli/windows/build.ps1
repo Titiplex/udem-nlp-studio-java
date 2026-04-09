@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path "$PSScriptRoot\..\..\.."
 Set-Location $RepoRoot
 
-$AppName = "nlp-studio-cli"
+$AppName = "nlpstudio"
 $Vendor = "Titiplex"
 $MainClass = "org.titiplex.Main"
 $JarName = "nlp-studio-core-$Version-all.jar"
@@ -18,7 +18,11 @@ mvn -pl core -am clean package
 
 $InputDir = Join-Path $RepoRoot "core\target"
 $DestDir = Join-Path $RepoRoot "core\target\installer"
+$TempDir = Join-Path $RepoRoot "core\target\jpackage-temp"
+$ResourceDir = Join-Path $RepoRoot "packaging\cli\windows\resources"
+
 New-Item -ItemType Directory -Force -Path $DestDir | Out-Null
+New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 
 $JarPath = Join-Path $InputDir $JarName
 if (-not (Test-Path $JarPath))
@@ -26,8 +30,18 @@ if (-not (Test-Path $JarPath))
     throw "Jar not found: $JarPath"
 }
 
-$IconPath = Join-Path $RepoRoot "packaging\resources\cli\nlp-studio-cli.ico"
-$HasIcon = Test-Path $IconPath
+$PrimaryIconPath = Join-Path $RepoRoot "packaging\resources\cli\nlpstudio.ico"
+$LegacyIconPath = Join-Path $RepoRoot "packaging\resources\cli\nlp-studio-cli.ico"
+
+$IconPath = $null
+if (Test-Path $PrimaryIconPath)
+{
+    $IconPath = $PrimaryIconPath
+}
+elseif (Test-Path $LegacyIconPath)
+{
+    $IconPath = $LegacyIconPath
+}
 
 $jpackageArgs = @(
     "--type", $Type,
@@ -37,12 +51,17 @@ $jpackageArgs = @(
     "--main-jar", $JarName,
     "--main-class", $MainClass,
     "--dest", $DestDir,
+    "--temp", $TempDir,
     "--vendor", $Vendor,
     "--description", "NLP Studio command line tools",
-    "--win-console"
+    "--resource-dir", $ResourceDir,
+    "--win-console",
+    "--win-dir-chooser",
+    "--win-shortcut-prompt",
+    "--verbose"
 )
 
-if ($HasIcon)
+if ($null -ne $IconPath)
 {
     $jpackageArgs += @("--icon", $IconPath)
 }

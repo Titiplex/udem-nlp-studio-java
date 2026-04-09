@@ -45,13 +45,17 @@ Expected shaded jar:
 
 - `core/target/nlp-studio-core-<version>-all.jar`
 
+Launcher name:
+
+- `nlpstudio`
+
 ---
 
 ## Requirements
 
 ### Common
 
-- JDK 21 with `jpackage`
+- JDK 21+ with `jpackage`
 - Maven
 - Git
 
@@ -63,7 +67,9 @@ The app build also triggers the frontend build through Maven.
 
 #### Windows
 
-For `msi`, install WiX Toolset if your environment requires it.
+For `msi` or `exe`, install WiX Toolset if your environment requires it.
+
+The Windows CLI installer uses a custom `jpackage` resource directory to override the default WiX templates.
 
 #### Linux
 
@@ -111,6 +117,12 @@ For real public distribution, you will eventually need:
 .\packaging\cli\windows\build.ps1 -Version 0.1.0 -Type exe
 ````
 
+After installation, the CLI launcher should be available from a new terminal as:
+
+````powershell
+nlpstudio
+````
+
 #### Linux
 
 ````shell
@@ -118,12 +130,32 @@ For real public distribution, you will eventually need:
 ./packaging/cli/linux/install.sh
 ````
 
+The Linux install script copies the packaged CLI into:
+
+- ``~/.local/opt/nlpstudio``
+
+and creates a launcher script in:
+
+- ``~/.local/bin/nlpstudio``
+
+If needed, the install script can also offer to add ``~/.local/bin`` to the user's `PATH`.
+
 #### macOS
 
 ````shell
 ./packaging/cli/macos/build.sh 0.1.0 app-image
 ./packaging/cli/macos/install.sh
 ````
+
+The macOS install script copies the packaged CLI into:
+
+- ``~/Applications/nlpstudio``
+
+and creates a launcher script in:
+
+- ``~/.local/bin/nlpstudio``
+
+If needed, the install script can also offer to add ``~/.local/bin`` to the user's `PATH`.
 
 ---
 
@@ -159,7 +191,32 @@ packaging/resources/cli/
     chuj.png
 ````
 
+Legacy fallback names are still accepted by the build scripts:
+
+````
+packaging/resources/cli/
+    nlp-studio-cli.ico
+    nlp-studio-cli.icns
+    nlp-studio-cli.png
+````
+
 If the icon files are missing, packaging still works.
+
+---
+
+## Windows CLI resource override
+
+The Windows CLI installer uses these custom files:
+
+````
+packaging/cli/windows/resources/
+    main.wxs
+    overrides.wxi
+    ShortcutPromptDlg.wxs
+````
+
+These files override the default ``jpackage`` WiX resources so the installer can ask whether `nlpstudio` should be added
+to the user `PATH`.
 
 ---
 
