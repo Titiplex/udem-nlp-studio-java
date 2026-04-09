@@ -17,11 +17,11 @@ public final class TokenPatternMatcher {
         if (i < 0 || i >= tokens.size()) return -1;
         if (!basicMatch(tokens, i, spec, context)) return -1;
 
-        int target = resolveByTargets(i, spec.targets(), tokens.size());
+        int target = resolveByTargets(i, spec.targets(), spec, tokens.size());
 
         if (spec.rootLexiconRef() != null && !spec.rootLexiconRef().isBlank()) {
             int rootIdx = switch ((spec.anchorSide() == null ? "" : spec.anchorSide()).toLowerCase(Locale.ROOT)) {
-                case "j" -> Math.min(i + 1, tokens.size() - 1);
+                case "j" -> resolveSequencePartnerIndex(i, spec, tokens.size());
                 case "i" -> i;
                 default -> i;
             };
@@ -31,58 +31,105 @@ public final class TokenPatternMatcher {
 
         if (spec.rootStartsWithVowel()) {
             int rootIdx = switch ((spec.anchorSide() == null ? "" : spec.anchorSide()).toLowerCase(Locale.ROOT)) {
-                case "j" -> Math.min(i + 1, tokens.size() - 1);
+                case "j" -> resolveSequencePartnerIndex(i, spec, tokens.size());
                 default -> i;
             };
+            if (rootIdx < 0 || rootIdx >= tokens.size()) return -1;
             if (!context.startsWithVowelAt(rootIdx)) return -1;
         }
 
         return target;
     }
 
-
     private static boolean basicMatch(List<AlignedToken> tokens, int i, MatchSpec spec, RuleContext context) {
         AlignedToken t = tokens.get(i);
-        if (!spec.glossValues().isEmpty() && spec.glossValues().stream().noneMatch(g -> containsIgnoreCase(t.glossSegments(), g) || eq(t.glossSurface(), g)))
+
+        if (!spec.glossValues().isEmpty()
+                && spec.glossValues().stream().noneMatch(g -> containsIgnoreCase(t.glossSegments(), g) || eq(t.glossSurface(), g))) {
             return false;
-        if (!spec.glossStartsWith().isEmpty() && spec.glossStartsWith().stream().noneMatch(g -> t.glossSegments().stream().anyMatch(s -> norm(s).startsWith(norm(g)))))
+        }
+
+        if (!spec.glossStartsWith().isEmpty()
+                && spec.glossStartsWith().stream().noneMatch(g -> t.glossSegments().stream().anyMatch(s -> norm(s).startsWith(norm(g))))) {
             return false;
-        if (spec.lexiconRef() != null && !spec.lexiconRef().isBlank() && !context.tokenMatchesLexicon(t, spec.lexiconRef()))
+        }
+
+        if (spec.lexiconRef() != null
+                && !spec.lexiconRef().isBlank()
+                && !context.tokenMatchesLexicon(t, spec.lexiconRef())) {
             return false;
-        if (!spec.tokenIsWord().isEmpty() && spec.tokenIsWord().stream().noneMatch(w -> eq(t.chujSurface(), w)))
+        }
+
+        if (!spec.tokenIsWord().isEmpty()
+                && spec.tokenIsWord().stream().noneMatch(w -> eq(t.chujSurface(), w))) {
             return false;
-        if (!spec.tokenAny().isEmpty() && spec.tokenAny().stream().noneMatch(w -> containsIgnoreCase(t.chujSegments(), w) || eq(t.chujSurface(), w)))
+        }
+
+        if (!spec.tokenAny().isEmpty()
+                && spec.tokenAny().stream().noneMatch(w -> containsIgnoreCase(t.chujSegments(), w) || eq(t.chujSurface(), w))) {
             return false;
-        if (!spec.tokenStartsWith().isEmpty() && spec.tokenStartsWith().stream().noneMatch(w -> norm(t.chujSurface()).startsWith(norm(w))))
+        }
+
+        if (!spec.tokenStartsWith().isEmpty()
+                && spec.tokenStartsWith().stream().noneMatch(w -> norm(t.chujSurface()).startsWith(norm(w)))) {
             return false;
-        if (!spec.tokenEndsWith().isEmpty() && spec.tokenEndsWith().stream().noneMatch(w -> norm(t.chujSurface()).endsWith(norm(w))))
+        }
+
+        if (!spec.tokenEndsWith().isEmpty()
+                && spec.tokenEndsWith().stream().noneMatch(w -> norm(t.chujSurface()).endsWith(norm(w)))) {
             return false;
-        if (!spec.tokenHasSegment().isEmpty() && spec.tokenHasSegment().stream().noneMatch(w -> containsIgnoreCase(t.chujSegments(), w)))
+        }
+
+        if (!spec.tokenHasSegment().isEmpty()
+                && spec.tokenHasSegment().stream().noneMatch(w -> containsIgnoreCase(t.chujSegments(), w))) {
             return false;
-        if (spec.tokenStartsWithVowel() && !startsWithVowel(t.chujSurface())) return false;
-        if (spec.betweenLength() != null && spec.betweenLength() != 1) return false;
-        if (!spec.tokenSequences().isEmpty() && spec.tokenSequences().stream().noneMatch(seq -> sequenceMatches(tokens, i, seq)))
+        }
+
+        if (spec.tokenStartsWithVowel() && !startsWithVowel(t.chujSurface())) {
             return false;
+        }
+
+        if (!spec.tokenSequences().isEmpty()
+                && spec.tokenSequences().stream().noneMatch(seq -> sequenceMatches(tokens, i, seq, spec.betweenLength()))) {
+            return false;
+        }
+
         return true;
     }
 
-    private static int resolveByTargets(int i, String targets, int size) {
+    private static int resolveByTargets(int i, String targets, MatchSpec spec, int size) {
         if (targets == null || targets.isBlank()) return i;
+
         return switch (targets.toLowerCase(Locale.ROOT)) {
             case "i" -> i;
-            case "j" -> Math.min(i + 1, size - 1);
+            case "j" -> resolveSequencePartnerIndex(i, spec, size);
             default -> i;
         };
     }
 
-    public static boolean sequenceMatches(List<AlignedToken> tokens, int i, List<String> seq) {
+    private static int resolveSequencePartnerIndex(int i, MatchSpec spec, int size) {
+        int gap = spec.betweenLength() == null ? 0 : spec.betweenLength();
+        int partner = i + gap + 1;
+        return Math.min(partner, size - 1);
+    }
+
+    public static boolean sequenceMatches(List<AlignedToken> tokens, int i, List<String> seq, Integer betweenLength) {
         if (seq.isEmpty()) return true;
-        if (i + seq.size() > tokens.size()) return false;
+
+        int gap = betweenLength == null ? 0 : betweenLength;
+        if (gap < 0) return false;
+
+        int lastIndex = i + (seq.size() - 1) * (gap + 1);
+        if (lastIndex >= tokens.size()) return false;
+
         for (int k = 0; k < seq.size(); k++) {
             String expected = seq.get(k);
             if ("_".equals(expected)) continue;
-            if (!eq(tokens.get(i + k).chujSurface(), expected)) return false;
+
+            int tokenIndex = i + k * (gap + 1);
+            if (!eq(tokens.get(tokenIndex).chujSurface(), expected)) return false;
         }
+
         return true;
     }
 
