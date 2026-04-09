@@ -55,6 +55,7 @@ The repository is organized as a multi-module Maven project:
 ├── app/        # JavaFX desktop application
 ├── backend/    # Spring Boot backend
 ├── core/       # CLI + core NLP pipeline
+├── docs/       # Documentation for the project
 ├── frontend/   # Vue/Vite frontend
 └── scripts/    # packaging helpers
 ```
@@ -233,6 +234,30 @@ This branch focuses on an integrated **NLP studio** workflow rather than only a 
 - CLI processing remains available
 - desktop editing and preview are first-class
 - backend-managed rules and annotation settings are part of the current architecture
+
+---
+
+## Documentation
+
+The documentation is built using [MkDocs](https://www.mkdocs.org) and is available at this repository's [GitHub Pages](https://titiplex.github.io/udem-nlp-studio-java/).
+
+To preview the doc and edit it live:
+
+````shell
+mkdocs serve --livereload
+````
+
+To build the doc (generates files in [site/](site)) :
+
+````shell
+mkdocs build
+````
+
+To publish the doc in your repository under github pages, in the **gh-pages** branch :
+
+````shell
+mkdocs gh-deploy
+````
 
 ---
 
