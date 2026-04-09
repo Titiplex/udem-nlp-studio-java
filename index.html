@@ -77,6 +77,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#nlp-studio-yaml-reference" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -357,6 +362,26 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="." class="md-nav__link md-nav__link--active">
         
@@ -374,6 +399,80 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#two-yaml-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two YAML families
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-reading-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended reading order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important note
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#main-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Main concepts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-of-the-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope of the documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1117,6 +1216,71 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#two-yaml-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two YAML families
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-reading-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended reading order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#important-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important note
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#main-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Main concepts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-of-the-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope of the documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1136,9 +1300,54 @@
   
 
 
-  <h1>Home</h1>
-
-
+<h1 id="nlp-studio-yaml-reference">NLP Studio YAML Reference<a class="headerlink" href="#nlp-studio-yaml-reference" title="Permanent link">&para;</a></h1>
+<p>This documentation describes the YAML grammars currently supported by the NLP Studio engine.</p>
+<p>It focuses on the <strong>actual runtime behavior</strong> of the current implementation, including some implementation-specific
+constraints and limitations.</p>
+<h2 id="two-yaml-families">Two YAML families<a class="headerlink" href="#two-yaml-families" title="Permanent link">&para;</a></h2>
+<p>The project currently relies on two distinct YAML configurations:</p>
+<ul>
+<li><strong>Correction YAML</strong>: used to normalize, rewrite, split, merge, delete, or otherwise transform aligned tokens before
+  annotation.</li>
+<li><strong>Annotation YAML</strong>: used to define POS/features, gloss mappings, lexicons, extractors, and rule-based annotation
+  behavior for CoNLL-U generation.</li>
+</ul>
+<h2 id="recommended-reading-order">Recommended reading order<a class="headerlink" href="#recommended-reading-order" title="Permanent link">&para;</a></h2>
+<p>If you are new to the project, the best reading order is:</p>
+<ol>
+<li><strong>Correction Rules → Overview</strong></li>
+<li><strong>Annotation Rules → Overview</strong></li>
+<li><strong>Limitations</strong></li>
+</ol>
+<p>Then you can move to the detailed tag/zone pages depending on what you want to edit.</p>
+<h2 id="important-note">Important note<a class="headerlink" href="#important-note" title="Permanent link">&para;</a></h2>
+<p>This site documents the <strong>current engine behavior</strong>, not an idealized or planned grammar.</p>
+<p>Some parts of the YAML surface look more generic than they really are at runtime. For example:</p>
+<ul>
+<li>some fields are currently more descriptive than operational,</li>
+<li>some syntax variants exist for backward compatibility,</li>
+<li>some operations are supported only in a narrower form than the YAML may suggest.</li>
+</ul>
+<p>When in doubt, prefer the documented behavior here and the test YAML files in the repository.</p>
+<h2 id="main-concepts">Main concepts<a class="headerlink" href="#main-concepts" title="Permanent link">&para;</a></h2>
+<p>A few recurring concepts appear throughout the documentation:</p>
+<ul>
+<li><strong>token</strong>: a full aligned token</li>
+<li><strong>morpheme</strong>: an individual segment within a token</li>
+<li><strong>Surface</strong>: the surface form on the language side</li>
+<li><strong>gloss surface</strong>: the joined gloss side</li>
+<li><strong>segments</strong>: parts separated by <code>-</code></li>
+<li><strong>lexicon</strong>: a named set of literals loaded from YAML or files</li>
+<li><strong>extractor context</strong>: structured values injected by extractors and later reused in templates or conditions</li>
+</ul>
+<h2 id="scope-of-the-documentation">Scope of the documentation<a class="headerlink" href="#scope-of-the-documentation" title="Permanent link">&para;</a></h2>
+<p>This reference currently documents:</p>
+<ul>
+<li>the correction rule grammar loaded by the correction YAML loader,</li>
+<li>the annotation YAML zones loaded by the annotation config loader,</li>
+<li>the main supported tags and their semantics,</li>
+<li>the known implementation limits that affect YAML authoring.</li>
+</ul>
 
 
 
