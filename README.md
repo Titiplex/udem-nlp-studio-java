@@ -148,6 +148,12 @@ npm run typecheck
 
 ## Packaging
 
+Verify that the project builds correctly:
+
+````shell
+mvn clean verify
+````
+
 ### Build the desktop jar
 
 ````shell
