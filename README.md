@@ -167,19 +167,10 @@ Generated file:
 app/target/nlp-studio-app-0.1.0-all.jar
 ````
 
-### Create a Windows installer
+### Create Installers
 
-After the production package is built:
-
-````shell
-scripts\package-windows.bat
-````
-
-This script uses `jpackage` to generate a Windows installer in:
-
-````
-app\target\installer
-````
+This project can build and publish installers, for each specific OS.
+For that, please read [packaging/README.md](packaging/README.md).
 
 ---
 
@@ -239,7 +230,8 @@ This branch focuses on an integrated **NLP studio** workflow rather than only a 
 
 ## Documentation
 
-The documentation is built using [MkDocs](https://www.mkdocs.org) and is available at this repository's [GitHub Pages](https://titiplex.github.io/udem-nlp-studio-java/).
+The documentation is built using [MkDocs](https://www.mkdocs.org) and is available at this
+repository's [GitHub Pages](https://titiplex.github.io/udem-nlp-studio-java/).
 
 To preview the doc and edit it live:
 
