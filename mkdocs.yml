@@ -1,0 +1,78 @@
+site_name: Grammar of correction and annotation files
+site_description: Documentation for NLP-Studio project.
+site_author: Titouan Johanny
+site_url: https://titiplex.github.io/udem-nlp-studio-java/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - search.share
+    - content.tabs.link
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+copyright: "&copy; 2026 <b>Chuj Team</b> &ndash; Grammar of Correction and Annotation rules <br>Département de Linguistique <br>Université de Montréal"
+
+repo_name: udem-nlp-studio-java
+repo_url: https://github.com/Titiplex/udem-nlp-studio-java
+# edit_uri: edit/main/docs/
+
+# extra:
+#   social:
+#     - icon: fontawesome/brands/github
+#       link: https://github.com/...
+#       name: squidfunk on Fosstodon
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.emoji
+  - pymdownx.keys
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+
+nav:
+  - Home: index.md
+  - Correction Rules:
+      - Overview: correction/overview.md
+      - Practical Grammar: correction/grammar.md
+  - Annotation Rules:
+      - Overview: annotation/overview.md
