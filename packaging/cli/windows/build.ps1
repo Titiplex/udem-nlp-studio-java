@@ -11,7 +11,6 @@ Set-Location $RepoRoot
 $AppName = "nlpstudio"
 $Vendor = "Titiplex"
 $MainClass = "org.titiplex.Main"
-$JarName = "nlp-studio-core-$Version-all.jar"
 
 Write-Host "==> Building CLI with Maven"
 mvn -pl core -am clean package
@@ -24,11 +23,15 @@ $ResourceDir = Join-Path $RepoRoot "packaging\cli\windows\resources"
 New-Item -ItemType Directory -Force -Path $DestDir | Out-Null
 New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 
-$JarPath = Join-Path $InputDir $JarName
-if (-not (Test-Path $JarPath))
+$JarFile = Get-ChildItem $InputDir -Filter "nlp-studio-core-*-all.jar" | Sort-Object Name -Descending | Select-Object -First 1
+if (-not $JarFile)
 {
-    throw "Jar not found: $JarPath"
+    throw "Shaded CLI jar not found in $InputDir"
 }
+$JarName = $JarFile.Name
+$JarPath = $JarFile.FullName
+
+Write-Host "==> Using shaded CLI jar: $JarName"
 
 $PrimaryIconPath = Join-Path $RepoRoot "packaging\resources\cli\nlpstudio.ico"
 $LegacyIconPath = Join-Path $RepoRoot "packaging\resources\cli\nlp-studio-cli.ico"

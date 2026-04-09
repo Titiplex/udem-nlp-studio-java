@@ -9,7 +9,6 @@ cd "$REPO_ROOT"
 
 APP_NAME="NLP Studio"
 MAIN_CLASS="org.titiplex.app.DesktopApp"
-JAR_NAME="nlp-studio-app-${VERSION}-all.jar"
 INPUT_DIR="$REPO_ROOT/app/target"
 DEST_DIR="$REPO_ROOT/app/target/installer"
 
@@ -18,10 +17,14 @@ mvn -pl app -am -Pdesktop-prod clean package
 
 mkdir -p "$DEST_DIR"
 
-if [[ ! -f "$INPUT_DIR/$JAR_NAME" ]]; then
-  echo "Jar not found: $INPUT_DIR/$JAR_NAME" >&2
+JAR_PATH="$(find "$INPUT_DIR" -maxdepth 1 -type f -name 'nlp-studio-app-*-all.jar' | sort | tail -n 1)"
+if [[ -z "$JAR_PATH" ]]; then
+  echo "Shaded desktop app jar not found in $INPUT_DIR" >&2
   exit 1
 fi
+JAR_NAME="$(basename "$JAR_PATH")"
+
+echo "==> Using shaded desktop jar: $JAR_NAME"
 
 ICON_PATH="$REPO_ROOT/packaging/resources/app/nlp-studio.icns"
 

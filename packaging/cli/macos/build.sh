@@ -9,7 +9,6 @@ cd "$REPO_ROOT"
 
 APP_NAME="nlpstudio"
 MAIN_CLASS="org.titiplex.Main"
-JAR_NAME="nlp-studio-core-${VERSION}-all.jar"
 INPUT_DIR="$REPO_ROOT/core/target"
 DEST_DIR="$REPO_ROOT/core/target/installer"
 TEMP_DIR="$REPO_ROOT/core/target/jpackage-temp-macos"
@@ -20,10 +19,14 @@ mvn -pl core -am clean package
 mkdir -p "$DEST_DIR"
 mkdir -p "$TEMP_DIR"
 
-if [[ ! -f "$INPUT_DIR/$JAR_NAME" ]]; then
-  echo "Jar not found: $INPUT_DIR/$JAR_NAME" >&2
+JAR_PATH="$(find "$INPUT_DIR" -maxdepth 1 -type f -name 'nlp-studio-core-*-all.jar' | sort | tail -n 1)"
+if [[ -z "$JAR_PATH" ]]; then
+  echo "Shaded CLI jar not found in $INPUT_DIR" >&2
   exit 1
 fi
+JAR_NAME="$(basename "$JAR_PATH")"
+
+echo "==> Using shaded CLI jar: $JAR_NAME"
 
 PRIMARY_ICON_PATH="$REPO_ROOT/packaging/resources/cli/nlpstudio.icns"
 LEGACY_ICON_PATH="$REPO_ROOT/packaging/resources/cli/nlp-studio-cli.icns"

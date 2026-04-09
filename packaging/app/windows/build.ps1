@@ -11,7 +11,6 @@ Set-Location $RepoRoot
 $AppName = "NLP Studio"
 $Vendor = "Titiplex"
 $MainClass = "org.titiplex.app.DesktopApp"
-$JarName = "nlp-studio-app-$Version-all.jar"
 
 Write-Host "==> Building desktop app with Maven"
 mvn -pl app -am -Pdesktop-prod clean package
@@ -20,11 +19,14 @@ $InputDir = Join-Path $RepoRoot "app\target"
 $DestDir = Join-Path $RepoRoot "app\target\installer"
 New-Item -ItemType Directory -Force -Path $DestDir | Out-Null
 
-$JarPath = Join-Path $InputDir $JarName
-if (-not (Test-Path $JarPath))
+$JarFile = Get-ChildItem $InputDir -Filter "nlp-studio-app-*-all.jar" | Sort-Object Name -Descending | Select-Object -First 1
+if (-not $JarFile)
 {
-    throw "Jar not found: $JarPath"
+    throw "Shaded desktop app jar not found in $InputDir"
 }
+$JarName = $JarFile.Name
+
+Write-Host "==> Using shaded desktop jar: $JarName"
 
 $IconPath = Join-Path $RepoRoot "packaging\resources\app\nlp-studio.ico"
 $HasIcon = Test-Path $IconPath
