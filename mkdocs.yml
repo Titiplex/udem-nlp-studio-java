@@ -35,7 +35,7 @@ theme:
     text: Roboto
     code: Roboto Mono
 
-copyright: "&copy; 2026 <b>Chuj Team</b> &ndash; Grammar of Correction and Annotation rules <br>Département de Linguistique <br>Université de Montréal"
+copyright: "&copy; 2026 <b>Chuj Team</b> &ndash; Grammar of Correction and Annotation rules<br>Département de Linguistique<br>Université de Montréal"
 
 repo_name: udem-nlp-studio-java
 repo_url: https://github.com/Titiplex/udem-nlp-studio-java
@@ -74,5 +74,21 @@ nav:
   - Correction Rules:
       - Overview: correction/overview.md
       - Practical Grammar: correction/grammar.md
+      - Tags:
+          - merge: correction/tags/merge.md
+          - rewrite.match: correction/tags/rewrite-match.md
+          - rewrite.delete: correction/tags/rewrite-delete.md
+          - rewrite.before/rewrite.after: correction/tags/rewrite-before-after.md
+          - rewrite.insert: correction/tags/rewrite-insert.md
+          - rewrite.regex_sub: correction/tags/rewrite-regex_sub.md
+          - rewrite.split: correction/tags/rewrite-split.md
   - Annotation Rules:
       - Overview: annotation/overview.md
+      - Grammar: annotation/grammar.md
+      - Zones:
+          - def: annotation/zones/def.md
+          - extractors: annotation/zones/extractors.md
+          - gloss_map: annotation/zones/gloss_map.md
+          - lexicons: annotation/zones/lexicons.md
+          - rules: annotation/zones/rules.md
+  - Limitations: limitations.md
