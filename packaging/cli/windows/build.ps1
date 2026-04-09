@@ -12,31 +12,49 @@ $AppName = "nlpstudio"
 $Vendor = "Titiplex"
 $MainClass = "org.titiplex.Main"
 
+$TargetDir = Join-Path $RepoRoot "core\target"
+$InputDir = Join-Path $RepoRoot "core\target\jpackage-input-windows"
+$DestDir = Join-Path $RepoRoot "core\target\installer"
+$TempDir = Join-Path $RepoRoot "core\target\jpackage-temp"
+
 Write-Host "==> Building CLI with Maven"
 mvn -pl core -am clean package
 
-$InputDir = Join-Path $RepoRoot "core\target"
-$DestDir = Join-Path $RepoRoot "core\target\installer"
-$TempDir = Join-Path $RepoRoot "core\target\jpackage-temp"
-$ResourceDir = Join-Path $RepoRoot "packaging\cli\windows\resources"
+if (Test-Path $InputDir)
+{
+    Remove-Item $InputDir -Recurse -Force
+}
+if (Test-Path $DestDir)
+{
+    Remove-Item $DestDir -Recurse -Force
+}
+if (Test-Path $TempDir)
+{
+    Remove-Item $TempDir -Recurse -Force
+}
 
+New-Item -ItemType Directory -Force -Path $InputDir | Out-Null
 New-Item -ItemType Directory -Force -Path $DestDir | Out-Null
 New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 
-$JarFile = Get-ChildItem $InputDir -Filter "nlp-studio-core-*-all.jar" | Sort-Object Name -Descending | Select-Object -First 1
+$JarFile = Get-ChildItem $TargetDir -Filter "nlp-studio-core-*-all.jar" |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+
 if (-not $JarFile)
 {
-    throw "Shaded CLI jar not found in $InputDir"
+    throw "Shaded CLI jar not found in $TargetDir"
 }
+
 $JarName = $JarFile.Name
-$JarPath = $JarFile.FullName
+Copy-Item $JarFile.FullName (Join-Path $InputDir $JarName)
 
 Write-Host "==> Using shaded CLI jar: $JarName"
 
 $PrimaryIconPath = Join-Path $RepoRoot "packaging\resources\cli\nlpstudio.ico"
 $LegacyIconPath = Join-Path $RepoRoot "packaging\resources\cli\nlp-studio-cli.ico"
-
 $IconPath = $null
+
 if (Test-Path $PrimaryIconPath)
 {
     $IconPath = $PrimaryIconPath
@@ -57,7 +75,6 @@ $jpackageArgs = @(
     "--temp", $TempDir,
     "--vendor", $Vendor,
     "--description", "NLP Studio command line tools",
-    "--resource-dir", $ResourceDir,
     "--win-console",
     "--win-dir-chooser",
     "--win-shortcut-prompt",

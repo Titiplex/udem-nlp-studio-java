@@ -51,9 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-
     runs-on: ${{ matrix.os }}
-
     env:
       APP_VERSION: ${{ needs.resolve-version.outputs.version }}
       CLI_APP_NAME: nlpstudio
@@ -91,7 +89,9 @@ jobs:
 
       - name: Build CLI on Linux
         if: runner.os == 'Linux'
-        run: bash packaging/cli/linux/build.sh "$APP_VERSION" app-image
+        shell: bash
+        run: |
+          bash packaging/cli/linux/build.sh "$APP_VERSION" app-image
 
       - name: Inspect Linux installer output
         if: runner.os == 'Linux'
@@ -109,26 +109,29 @@ jobs:
 
       - name: Build CLI on macOS
         if: runner.os == 'macOS'
-        run: bash packaging/cli/macos/build.sh "$APP_VERSION" app-image
+        shell: bash
+        run: |
+          bash packaging/cli/macos/build.sh "$APP_VERSION" app-image
 
       - name: Inspect macOS installer output
         if: runner.os == 'macOS'
         shell: bash
         run: |
           ls -la core/target/installer
-          test -d "core/target/installer/$CLI_APP_NAME"
+          test -d "core/target/installer/$CLI_APP_NAME.app"
 
       - name: Collect macOS CLI asset
         if: runner.os == 'macOS'
         shell: bash
         run: |
           cd core/target/installer
-          tar -czf "$GITHUB_WORKSPACE/release-assets/nlpstudio-macos-${APP_VERSION}.tar.gz" "$CLI_APP_NAME"
+          tar -czf "$GITHUB_WORKSPACE/release-assets/nlpstudio-macos-${APP_VERSION}.tar.gz" "$CLI_APP_NAME.app"
 
       - name: Build CLI on Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./packaging/cli/windows/build.ps1 -Version $env:APP_VERSION -Type exe
+        run: |
+          ./packaging/cli/windows/build.ps1 -Version $env:APP_VERSION -Type exe
 
       - name: Inspect Windows installer output
         if: runner.os == 'Windows'
@@ -172,39 +175,23 @@ jobs:
           VERSION: ${{ needs.resolve-version.outputs.version }}
         run: |
           cat > release-notes-cli.md <<EOF
-          NLP Studio CLI release for ${TAG}
+          CLI release ${VERSION}
 
-          Included assets:
-          - nlpstudio-windows-${VERSION}.exe
-          - nlpstudio-linux-${VERSION}.tar.gz
-          - nlpstudio-macos-${VERSION}.tar.gz
+          Assets:
+          - Linux app-image archive
+          - macOS app-image archive
+          - Windows installer
 
-          Installation notes:
-          - Windows: run the EXE installer
-          - Linux/macOS: extract the archive and optionally install into PATH using the scripts in packaging/cli
-
-          Notes:
-          - This release contains the CLI only.
-          - The desktop application is released separately under tags matching app-v*.
+          Tag: ${TAG}
           EOF
 
-      - name: Create GitHub Release for CLI
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.resolve-version.outputs.tag }}
-          PRERELEASE: ${{ needs.resolve-version.outputs.prerelease }}
-        shell: bash
-        run: |
-          PRERELEASE_FLAG=""
-          if [[ "$PRERELEASE" == "true" ]]; then
-            PRERELEASE_FLAG="--prerelease"
-          fi
-
-          gh release create "$TAG" \
-            dist/**/*.exe \
-            dist/**/*.tar.gz \
-            --title "NLP Studio CLI ${TAG}" \
-            --notes-file release-notes-cli.md \
-            --generate-notes \
-            --verify-tag \
-            $PRERELEASE_FLAG
+      - name: Publish CLI GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          name: CLI ${{ needs.resolve-version.outputs.version }}
+          prerelease: ${{ needs.resolve-version.outputs.prerelease == 'true' }}
+          body_path: release-notes-cli.md
+          files: |
+            dist/**/*.tar.gz
+            dist/**/*.exe
