@@ -25,14 +25,28 @@ public final class MergeSequenceRule implements CorrectionRule {
         while (i < context.size() - 1) {
             List<AlignedToken> snap = context.alignedTokens();
             List<String> matched = null;
+
             for (List<String> seq : sequences) {
-                if (seq.size() == 2 && TokenPatternMatcher.sequenceMatches(snap, i, seq)) { matched = seq; break; }
+                if (seq.size() == 2 && TokenPatternMatcher.sequenceMatches(snap, i, seq, 0)) {
+                    matched = seq;
+                    break;
+                }
             }
-            if (matched == null) { i++; continue; }
+
+            if (matched == null) {
+                i++;
+                continue;
+            }
+
             AlignedToken a = context.get(i);
             AlignedToken b = context.get(i + 1);
-            List<String> ch = new ArrayList<>(a.chujSegments()); ch.addAll(b.chujSegments());
-            List<String> gl = new ArrayList<>(a.glossSegments()); gl.addAll(b.glossSegments());
+
+            List<String> ch = new ArrayList<>(a.chujSegments());
+            ch.addAll(b.chujSegments());
+
+            List<String> gl = new ArrayList<>(a.glossSegments());
+            gl.addAll(b.glossSegments());
+
             context.replace(i, context.rebuildToken(ch, gl));
             context.removeAt(i + 1);
         }
