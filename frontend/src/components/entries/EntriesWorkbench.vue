@@ -6,6 +6,7 @@ import EntryListPane from './EntryListPane.vue'
 import EntryDetailForm from './EntryDetailForm.vue'
 import EntryDiffPane from './EntryDiffPane.vue'
 import ConflictBanner from '../common/ConflictBanner.vue'
+import ConflictDiffCard from '../common/ConflictDiffCard.vue'
 
 const store = useEntryEditorStore()
 
@@ -64,6 +65,24 @@ onMounted(async () => {
           @reload="store.reloadRemoteVersion()"
           @dismiss="store.clearConflict()"
       />
+
+      <template v-if="store.hasConflict && store.hasRemoteConflictDraft">
+        <ConflictDiffCard
+            title="Raw entry: local vs remote"
+            local-label="Local draft"
+            remote-label="Remote version"
+            :local-text="store.localConflictRaw"
+            :remote-text="store.remoteConflictRaw"
+        />
+
+        <ConflictDiffCard
+            title="Corrected entry: local vs remote"
+            local-label="Local draft"
+            remote-label="Remote version"
+            :local-text="store.localConflictCorrected"
+            :remote-text="store.remoteConflictCorrected"
+        />
+      </template>
 
       <p v-if="store.statusMessage && !store.hasConflict" class="status-line">{{ store.statusMessage }}</p>
 

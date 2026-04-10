@@ -6,6 +6,7 @@ import StringListEditor from './StringListEditor.vue'
 import LexiconEditor from './LexiconEditor.vue'
 import ExtractorEditor from './ExtractorEditor.vue'
 import ConflictBanner from '../common/ConflictBanner.vue'
+import ConflictDiffCard from '../common/ConflictDiffCard.vue'
 
 const store = useAnnotationSettingsStore()
 
@@ -47,6 +48,15 @@ onMounted(async () => {
         :can-reload="true"
         @reload="store.reloadRemoteVersion()"
         @dismiss="store.clearConflict()"
+    />
+
+    <ConflictDiffCard
+        v-if="store.hasConflict && store.hasRemoteConflictDraft"
+        title="Annotation settings YAML: local vs remote"
+        local-label="Local draft"
+        remote-label="Remote version"
+        :local-text="store.localConflictYaml"
+        :remote-text="store.remoteConflictYaml"
     />
 
     <p v-if="store.statusMessage && !store.hasConflict" class="status-line">{{ store.statusMessage }}</p>

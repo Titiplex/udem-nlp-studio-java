@@ -10,6 +10,7 @@ import YamlRuleEditor from './YamlRuleEditor.vue'
 import RulePreviewPane from './RulePreviewPane.vue'
 import ValidationPanel from './ValidationPanel.vue'
 import ConflictBanner from '../common/ConflictBanner.vue'
+import ConflictDiffCard from '../common/ConflictDiffCard.vue'
 
 const store = useRuleEditorStore()
 
@@ -92,6 +93,15 @@ onMounted(async () => {
           :can-reload="!!store.selectedRuleId"
           @reload="store.reloadRemoteVersion()"
           @dismiss="store.clearConflict()"
+      />
+
+      <ConflictDiffCard
+          v-if="store.hasConflict && store.hasRemoteConflictDraft"
+          title="Rule YAML / payload: local vs remote"
+          local-label="Local draft"
+          remote-label="Remote version"
+          :local-text="store.localConflictYaml"
+          :remote-text="store.remoteConflictYaml"
       />
 
       <p v-if="store.statusMessage && !store.hasConflict" class="status-line">{{ store.statusMessage }}</p>

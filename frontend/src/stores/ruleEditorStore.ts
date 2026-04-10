@@ -31,11 +31,20 @@ function isConflictMessage(message?: string | null): boolean {
     return !!message && message.toLowerCase().startsWith('conflict:')
 }
 
+function prettyJson(value: unknown): string {
+    try {
+        return JSON.stringify(value ?? {}, null, 2)
+    } catch {
+        return String(value ?? '')
+    }
+}
+
 export const useRuleEditorStore = defineStore('ruleEditor', {
     state: () => ({
         rules: [] as RuleSummary[],
         selectedRuleId: null as string | null,
         draft: emptyRule() as RuleDetail,
+        remoteConflictDraft: null as RuleDetail | null,
         issues: [] as ValidationIssue[],
         activeTab: 'visual' as EditorTab,
         busy: false,
@@ -70,16 +79,45 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
         hasConflict(state): boolean {
             return !!state.conflictMessage
         },
+
+        hasRemoteConflictDraft(state): boolean {
+            return !!state.remoteConflictDraft
+        },
+
+        localConflictYaml(state): string {
+            return state.draft.rawYaml || prettyJson(state.draft.payload)
+        },
+
+        remoteConflictYaml(state): string {
+            return state.remoteConflictDraft?.rawYaml || prettyJson(state.remoteConflictDraft?.payload)
+        },
     },
 
     actions: {
         clearConflict() {
             this.conflictMessage = ''
+            this.remoteConflictDraft = null
         },
 
-        setConflict(message: string) {
+        async setConflict(message: string) {
             this.conflictMessage = message
             this.statusMessage = message
+            await this.fetchRemoteForConflict()
+        },
+
+        async fetchRemoteForConflict() {
+            if (!this.selectedRuleId) {
+                this.remoteConflictDraft = null
+                return
+            }
+
+            const resp = callBridge<RuleDetail>('getRule', this.selectedRuleId)
+            if (!resp.success || !resp.data) {
+                this.remoteConflictDraft = null
+                return
+            }
+
+            this.remoteConflictDraft = structuredClone(resp.data)
         },
 
         async refreshRules() {
@@ -207,11 +245,11 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
             this.statusMessage = 'YAML parsé.'
         },
 
-        saveDraft() {
+        async saveDraft() {
             const resp = callBridge<RuleDraftResult>('saveRule', JSON.stringify(this.draft))
             if (!resp.success || !resp.data) {
                 if (isConflictMessage(resp.message)) {
-                    this.setConflict(resp.message ?? 'Conflict detected.')
+                    await this.setConflict(resp.message ?? 'Conflict detected.')
                     return
                 }
                 this.statusMessage = resp.message ?? 'Sauvegarde impossible.'

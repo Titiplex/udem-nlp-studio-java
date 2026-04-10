@@ -1,5 +1,5 @@
 import {defineStore} from 'pinia'
-import {type AnnotationSettings, callBridge} from '../bridge/desktopBridge'
+import {callBridge, type AnnotationSettings} from '../bridge/desktopBridge'
 
 function emptySettings(): AnnotationSettings {
     return {
@@ -23,6 +23,7 @@ function isConflictMessage(message?: string | null): boolean {
 export const useAnnotationSettingsStore = defineStore('annotationSettings', {
     state: () => ({
         draft: emptySettings() as AnnotationSettings,
+        remoteConflictDraft: null as AnnotationSettings | null,
         busy: false,
         dirty: false,
         statusMessage: '',
@@ -51,16 +52,71 @@ export const useAnnotationSettingsStore = defineStore('annotationSettings', {
         hasConflict(state): boolean {
             return !!state.conflictMessage
         },
+
+        hasRemoteConflictDraft(state): boolean {
+            return !!state.remoteConflictDraft
+        },
+
+        localConflictYaml(state): string {
+            return [
+                '# POS',
+                state.draft.posDefinitionsYaml,
+                '',
+                '# FEATS',
+                state.draft.featDefinitionsYaml,
+                '',
+                '# LEXICONS',
+                state.draft.lexiconsYaml,
+                '',
+                '# EXTRACTORS',
+                state.draft.extractorsYaml,
+                '',
+                '# GLOSS MAP',
+                state.draft.glossMapYaml,
+            ].join('\n')
+        },
+
+        remoteConflictYaml(state): string {
+            if (!state.remoteConflictDraft) return ''
+            return [
+                '# POS',
+                state.remoteConflictDraft.posDefinitionsYaml,
+                '',
+                '# FEATS',
+                state.remoteConflictDraft.featDefinitionsYaml,
+                '',
+                '# LEXICONS',
+                state.remoteConflictDraft.lexiconsYaml,
+                '',
+                '# EXTRACTORS',
+                state.remoteConflictDraft.extractorsYaml,
+                '',
+                '# GLOSS MAP',
+                state.remoteConflictDraft.glossMapYaml,
+            ].join('\n')
+        },
     },
 
     actions: {
         clearConflict() {
             this.conflictMessage = ''
+            this.remoteConflictDraft = null
         },
 
-        setConflict(message: string) {
+        async setConflict(message: string) {
             this.conflictMessage = message
             this.statusMessage = message
+            await this.fetchRemoteForConflict()
+        },
+
+        async fetchRemoteForConflict() {
+            const resp = callBridge<AnnotationSettings>('getAnnotationSettings')
+            if (!resp.success || !resp.data) {
+                this.remoteConflictDraft = null
+                return
+            }
+
+            this.remoteConflictDraft = structuredClone(resp.data)
         },
 
         async loadSettings() {
@@ -106,7 +162,7 @@ export const useAnnotationSettingsStore = defineStore('annotationSettings', {
 
             if (!resp.success || !resp.data) {
                 if (isConflictMessage(resp.message)) {
-                    this.setConflict(resp.message ?? 'Conflict detected.')
+                    await this.setConflict(resp.message ?? 'Conflict detected.')
                     return
                 }
                 this.statusMessage = resp.message ?? 'Sauvegarde impossible.'

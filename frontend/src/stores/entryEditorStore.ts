@@ -39,6 +39,7 @@ export const useEntryEditorStore = defineStore('entryEditor', {
         entries: [] as EntrySummary[],
         selectedEntryId: null as string | null,
         draft: emptyEntry() as EntryDetail,
+        remoteConflictDraft: null as EntryDetail | null,
         busy: false,
         dirty: false,
         statusMessage: '',
@@ -78,16 +79,72 @@ export const useEntryEditorStore = defineStore('entryEditor', {
         hasConflict(state): boolean {
             return !!state.conflictMessage
         },
+
+        hasRemoteConflictDraft(state): boolean {
+            return !!state.remoteConflictDraft
+        },
+
+        localConflictRaw(state): string {
+            return [
+                state.draft.rawChujText,
+                state.draft.rawGlossText,
+                state.draft.translation,
+            ].join('\n')
+        },
+
+        remoteConflictRaw(state): string {
+            if (!state.remoteConflictDraft) return ''
+            return [
+                state.remoteConflictDraft.rawChujText,
+                state.remoteConflictDraft.rawGlossText,
+                state.remoteConflictDraft.translation,
+            ].join('\n')
+        },
+
+        localConflictCorrected(state): string {
+            return [
+                state.draft.correctedChujText,
+                state.draft.correctedGlossText,
+                state.draft.correctedTranslation,
+            ].join('\n')
+        },
+
+        remoteConflictCorrected(state): string {
+            if (!state.remoteConflictDraft) return ''
+            return [
+                state.remoteConflictDraft.correctedChujText,
+                state.remoteConflictDraft.correctedGlossText,
+                state.remoteConflictDraft.correctedTranslation,
+            ].join('\n')
+        },
     },
 
     actions: {
         clearConflict() {
             this.conflictMessage = ''
+            this.remoteConflictDraft = null
         },
 
-        setConflict(message: string) {
+        async setConflict(message: string) {
             this.conflictMessage = message
             this.statusMessage = message
+            await this.fetchRemoteForConflict()
+        },
+
+        async fetchRemoteForConflict() {
+            const entryId = this.selectedEntryId || this.draft.id
+            if (!entryId) {
+                this.remoteConflictDraft = null
+                return
+            }
+
+            const resp = callBridge<EntryDetail>('getEntry', entryId)
+            if (!resp.success || !resp.data) {
+                this.remoteConflictDraft = null
+                return
+            }
+
+            this.remoteConflictDraft = structuredClone(resp.data)
         },
 
         async refreshEntries() {
@@ -164,7 +221,7 @@ export const useEntryEditorStore = defineStore('entryEditor', {
             const resp = callBridge<EntryDetail>('saveEntry', JSON.stringify(this.draft))
             if (!resp.success || !resp.data) {
                 if (isConflictMessage(resp.message)) {
-                    this.setConflict(resp.message ?? 'Conflict detected.')
+                    await this.setConflict(resp.message ?? 'Conflict detected.')
                     return
                 }
                 this.statusMessage = resp.message ?? 'Sauvegarde impossible.'
@@ -193,7 +250,7 @@ export const useEntryEditorStore = defineStore('entryEditor', {
             const resp = callBridge<EntryDetail>('runCorrection', JSON.stringify(payload))
             if (!resp.success || !resp.data) {
                 if (isConflictMessage(resp.message)) {
-                    this.setConflict(resp.message ?? 'Conflict detected.')
+                    await this.setConflict(resp.message ?? 'Conflict detected.')
                     return
                 }
                 this.statusMessage = resp.message ?? 'Correction impossible.'
