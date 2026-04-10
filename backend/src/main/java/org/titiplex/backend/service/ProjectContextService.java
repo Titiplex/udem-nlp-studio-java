@@ -61,7 +61,7 @@ public class ProjectContextService {
                             entity.getName(),
                             entity.getProjectId().equals(active),
                             defaultSource.kind().name(),
-                            defaultSource.host() + "/" + defaultSource.database(),
+                            defaultSource.host() + "/" + defaultSource.database() + " [" + defaultSource.schema() + "]",
                             entity.getLastOpenedAt()
                     );
                 })
@@ -97,6 +97,7 @@ public class ProjectContextService {
         }
 
         LocalIdentityEntity localIdentity = getOrCreateLocalIdentity();
+        String schema = normalizeSchema(request.schema(), request.name(), projectId);
 
         ProjectManifest manifest = new ProjectManifest(
                 projectId,
@@ -110,7 +111,7 @@ public class ProjectContextService {
                         request.host(),
                         request.port() == null ? 5432 : request.port(),
                         request.database(),
-                        request.schema() == null || request.schema().isBlank() ? "public" : request.schema(),
+                        schema,
                         "secret://" + request.sourceId() + "/username",
                         "secret://" + request.sourceId() + "/password",
                         request.ssl()
@@ -254,5 +255,19 @@ public class ProjectContextService {
         } catch (IOException e) {
             throw new IllegalStateException("Cannot write manifest: " + e.getMessage(), e);
         }
+    }
+
+    private String normalizeSchema(String rawSchema, String projectName, UUID projectId) {
+        if (rawSchema != null && !rawSchema.isBlank()) {
+            return rawSchema.trim();
+        }
+        String base = projectName == null ? "project" : projectName.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
+        if (base.isBlank()) {
+            base = "project";
+        }
+        String suffix = projectId.toString().replace("-", "").substring(0, 8);
+        return "nlp_" + base + "_" + suffix;
     }
 }

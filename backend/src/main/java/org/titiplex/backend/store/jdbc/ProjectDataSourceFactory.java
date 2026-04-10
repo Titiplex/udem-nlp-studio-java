@@ -29,14 +29,21 @@ public class ProjectDataSourceFactory {
         String password = projectSecretService.resolveSecret(context.projectId(), source.passwordRef())
                 .orElseThrow(() -> new IllegalStateException("Missing password secret for project " + context.name()));
 
-        String jdbcUrl = "jdbc:postgresql://" + source.host() + ":" + source.port() + "/" + source.database();
+        StringBuilder jdbcUrl = new StringBuilder("jdbc:postgresql://")
+                .append(source.host())
+                .append(":")
+                .append(source.port())
+                .append("/")
+                .append(source.database());
+
+        jdbcUrl.append("?currentSchema=").append(source.schema());
         if (source.ssl()) {
-            jdbcUrl += "?sslmode=require";
+            jdbcUrl.append("&sslmode=require");
         }
 
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.postgresql.Driver");
-        dataSource.setUrl(jdbcUrl);
+        dataSource.setUrl(jdbcUrl.toString());
         dataSource.setUsername(username);
         dataSource.setPassword(password);
         return dataSource;

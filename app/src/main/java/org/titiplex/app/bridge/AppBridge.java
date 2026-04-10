@@ -23,6 +23,7 @@ public class AppBridge {
     private final AnnotationConfigComposerService annotationConfigComposerService;
     private final ProjectContextService projectContextService;
     private final ProjectSecretService projectSecretService;
+    private final ProjectProvisioningService projectProvisioningService;
 
     public AppBridge(RuleService ruleService,
                      RuleSchemaService ruleSchemaService,
@@ -31,7 +32,8 @@ public class AppBridge {
                      AnnotationSettingsService annotationSettingsService,
                      AnnotationConfigComposerService annotationConfigComposerService,
                      ProjectContextService projectContextService,
-                     ProjectSecretService projectSecretService) {
+                     ProjectSecretService projectSecretService,
+                     ProjectProvisioningService projectProvisioningService) {
         this.ruleService = ruleService;
         this.ruleSchemaService = ruleSchemaService;
         this.ruleEditorService = ruleEditorService;
@@ -40,6 +42,7 @@ public class AppBridge {
         this.annotationConfigComposerService = annotationConfigComposerService;
         this.projectContextService = projectContextService;
         this.projectSecretService = projectSecretService;
+        this.projectProvisioningService = projectProvisioningService;
     }
 
     public String ping() {
@@ -95,6 +98,21 @@ public class AppBridge {
             return write(BridgeResponse.ok("ok"));
         } catch (Exception e) {
             return write(BridgeResponse.error("Cannot save secrets: " + e.getMessage()));
+        }
+    }
+
+    public String testActiveProjectConnection() {
+        return safe(() -> {
+            var result = projectProvisioningService.testActiveProjectConnection();
+            return new ProjectConnectionStatusDto(result.success(), result.message());
+        });
+    }
+
+    public String initializeActiveProjectSchema() {
+        try {
+            return write(BridgeResponse.ok(projectProvisioningService.initializeActiveProjectSchema()));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Cannot initialize project schema: " + e.getMessage()));
         }
     }
 
