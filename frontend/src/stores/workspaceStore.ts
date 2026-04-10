@@ -1,10 +1,10 @@
 import {defineStore} from 'pinia'
 
-export type WorkspaceSection = 'rules' | 'entries' | 'preview' | 'settings'
+export type WorkspaceSection = 'projects' | 'rules' | 'entries' | 'preview' | 'settings'
 
 export const useWorkspaceStore = defineStore('workspace', {
     state: () => ({
-        currentSection: 'rules' as WorkspaceSection,
+        currentSection: 'projects' as WorkspaceSection,
     }),
     actions: {
         openSection(section: WorkspaceSection) {

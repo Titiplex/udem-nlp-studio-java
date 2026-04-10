@@ -24,6 +24,8 @@ const canRunYamlActions = computed(() => {
   return !!store.draft.kind && !!store.draft.subtype
 })
 
+const draftMeta = computed(() => store.draftMetaLine)
+
 function loadSchema(kind: string, subtype: string) {
   const resp = callBridge<RuleBuilderSchema>('getRuleSchema', kind, subtype)
   schema.value = resp.data ?? null
@@ -71,6 +73,7 @@ onMounted(async () => {
             {{ store.draft.kind || '—' }} / {{ store.draft.subtype || '—' }}
             <span v-if="store.dirty">• unsaved</span>
           </p>
+          <p v-if="draftMeta" class="editor-meta">{{ draftMeta }}</p>
         </div>
 
         <div class="editor-actions">
@@ -154,6 +157,12 @@ onMounted(async () => {
 .editor-subtitle {
   margin: 4px 0 0;
   color: #6b7280;
+}
+
+.editor-meta {
+  margin: 4px 0 0;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 .editor-actions {

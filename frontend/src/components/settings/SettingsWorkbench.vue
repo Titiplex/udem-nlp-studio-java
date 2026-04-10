@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted} from 'vue'
+import {computed, onMounted} from 'vue'
 import {waitForBridge} from '../../bridge/desktopBridge'
 import {useAnnotationSettingsStore} from '../../stores/annotationSettingsStore'
 import StringListEditor from './StringListEditor.vue'
@@ -7,6 +7,8 @@ import LexiconEditor from './LexiconEditor.vue'
 import ExtractorEditor from './ExtractorEditor.vue'
 
 const store = useAnnotationSettingsStore()
+
+const draftMeta = computed(() => store.draftMetaLine)
 
 onMounted(async () => {
   const ready = await waitForBridge()
@@ -28,6 +30,7 @@ onMounted(async () => {
           Édite ici le socle global partagé par toutes les règles d’annotation.
           Les sections fréquentes sont maintenant guidées. Le `gloss_map` reste en YAML libre.
         </p>
+        <p v-if="draftMeta" class="meta">{{ draftMeta }}</p>
       </div>
 
       <div class="actions">
@@ -110,6 +113,12 @@ onMounted(async () => {
   margin: 4px 0 0;
   color: #6b7280;
   max-width: 900px;
+}
+
+.meta {
+  margin: 4px 0 0;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 .actions {

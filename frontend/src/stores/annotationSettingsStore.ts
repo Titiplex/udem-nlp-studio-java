@@ -1,5 +1,5 @@
-import { defineStore } from 'pinia'
-import { callBridge, type AnnotationSettings } from '../bridge/desktopBridge'
+import {defineStore} from 'pinia'
+import {type AnnotationSettings, callBridge} from '../bridge/desktopBridge'
 
 function emptySettings(): AnnotationSettings {
     return {
@@ -10,6 +10,9 @@ function emptySettings(): AnnotationSettings {
         glossMapYaml: '',
         baseYamlPreview: '',
         effectiveYamlPreview: '',
+        version: 0,
+        updatedBy: null,
+        updatedAt: null,
     }
 }
 
@@ -20,6 +23,26 @@ export const useAnnotationSettingsStore = defineStore('annotationSettings', {
         dirty: false,
         statusMessage: '',
     }),
+
+    getters: {
+        draftMetaLine(state): string {
+            const parts: string[] = []
+
+            if (state.draft.version != null) {
+                parts.push(`v${state.draft.version}`)
+            }
+
+            if (state.draft.updatedBy) {
+                parts.push(`updated by ${state.draft.updatedBy}`)
+            }
+
+            if (state.draft.updatedAt) {
+                parts.push(`at ${state.draft.updatedAt}`)
+            }
+
+            return parts.join(' • ')
+        },
+    },
 
     actions: {
         async loadSettings() {

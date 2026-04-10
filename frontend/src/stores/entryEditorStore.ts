@@ -24,6 +24,9 @@ function emptyEntry(): EntryDetail {
         correctedTranslation: '',
         approved: false,
         conlluPreview: '',
+        version: 0,
+        updatedBy: null,
+        updatedAt: null,
     }
 }
 
@@ -47,6 +50,24 @@ export const useEntryEditorStore = defineStore('entryEditor', {
 
         correctedCount(state): number {
             return state.entries.filter((entry) => entry.hasCorrection).length
+        },
+
+        draftMetaLine(state): string {
+            const parts: string[] = []
+
+            if (state.draft.version != null) {
+                parts.push(`v${state.draft.version}`)
+            }
+
+            if (state.draft.updatedBy) {
+                parts.push(`updated by ${state.draft.updatedBy}`)
+            }
+
+            if (state.draft.updatedAt) {
+                parts.push(`at ${state.draft.updatedAt}`)
+            }
+
+            return parts.join(' • ')
         },
     },
 
@@ -164,6 +185,8 @@ export const useEntryEditorStore = defineStore('entryEditor', {
 
             if (this.entries.length > 0) {
                 await this.loadEntry(this.entries[0].id)
+            } else {
+                this.createNewEntry()
             }
         },
 

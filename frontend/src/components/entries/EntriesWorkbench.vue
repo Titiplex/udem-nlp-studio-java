@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted} from 'vue'
+import {computed, onMounted} from 'vue'
 import {waitForBridge} from '../../bridge/desktopBridge'
 import {useEntryEditorStore} from '../../stores/entryEditorStore'
 import EntryListPane from './EntryListPane.vue'
@@ -7,6 +7,8 @@ import EntryDetailForm from './EntryDetailForm.vue'
 import EntryDiffPane from './EntryDiffPane.vue'
 
 const store = useEntryEditorStore()
+
+const draftMeta = computed(() => store.draftMetaLine)
 
 onMounted(async () => {
   const ready = await waitForBridge()
@@ -43,6 +45,7 @@ onMounted(async () => {
             {{ store.draft.id ? `Entry #${store.draft.documentOrder}` : 'New entry' }}
             <span v-if="store.dirty">• unsaved</span>
           </p>
+          <p v-if="draftMeta" class="editor-meta">{{ draftMeta }}</p>
         </div>
 
         <div class="editor-actions">
@@ -158,6 +161,12 @@ onMounted(async () => {
 .editor-subtitle {
   margin: 4px 0 0;
   color: #6b7280;
+}
+
+.editor-meta {
+  margin: 4px 0 0;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 .editor-actions,

@@ -1,28 +1,57 @@
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import {type AppInfo, callBridge, waitForBridge} from './bridge/desktopBridge'
 import RuleWorkbench from './components/rules/RuleWorkbench.vue'
 import EntriesWorkbench from './components/entries/EntriesWorkbench.vue'
 import PreviewWorkbench from './components/preview/PreviewWorkbench.vue'
 import SettingsWorkbench from './components/settings/SettingsWorkbench.vue'
+import ProjectWorkbench from './components/projects/ProjectWorkbench.vue'
 import {useWorkspaceStore, type WorkspaceSection} from './stores/workspaceStore'
+import {useProjectStore} from './stores/projectStore'
 
 const workspace = useWorkspaceStore()
+const projectStore = useProjectStore()
 
 const appName = ref('NLP Studio')
 const version = ref('unknown')
 const status = ref('Loading...')
 
-const navItems: Array<{ key: WorkspaceSection; label: string }> = [
-  {key: 'rules', label: 'Rules'},
-  {key: 'entries', label: 'Entries'},
-  {key: 'preview', label: 'Preview'},
-  {key: 'settings', label: 'Settings'},
+const navItems: Array<{ key: WorkspaceSection; label: string; requiresProject?: boolean }> = [
+  {key: 'projects', label: 'Projects'},
+  {key: 'rules', label: 'Rules', requiresProject: true},
+  {key: 'entries', label: 'Entries', requiresProject: true},
+  {key: 'preview', label: 'Preview', requiresProject: true},
+  {key: 'settings', label: 'Settings', requiresProject: true},
 ]
 
 const currentSectionLabel = computed(() => {
   return navItems.find((item) => item.key === workspace.currentSection)?.label ?? 'Workspace'
 })
+
+const activeProjectName = computed(() => {
+  return projectStore.activeProject?.name ?? 'No active project'
+})
+
+function canOpen(item: { requiresProject?: boolean }) {
+  return !item.requiresProject || projectStore.hasActiveProject
+}
+
+function openSection(item: { key: WorkspaceSection; requiresProject?: boolean }) {
+  if (!canOpen(item)) {
+    workspace.openSection('projects')
+    return
+  }
+  workspace.openSection(item.key)
+}
+
+watch(
+    () => projectStore.hasActiveProject,
+    (hasProject) => {
+      if (!hasProject && workspace.currentSection !== 'projects') {
+        workspace.openSection('projects')
+      }
+    },
+)
 
 onMounted(async () => {
   const ready = await waitForBridge()
@@ -38,6 +67,12 @@ onMounted(async () => {
   status.value = pingResp.data ?? pingResp.message ?? 'No response'
   appName.value = infoResp.data?.name ?? 'NLP Studio'
   version.value = infoResp.data?.version ?? 'unknown'
+
+  await projectStore.refreshAll()
+
+  if (!projectStore.hasActiveProject) {
+    workspace.openSection('projects')
+  }
 })
 </script>
 
@@ -50,7 +85,12 @@ onMounted(async () => {
       </div>
 
       <div class="topbar-right">
+        <div class="project-pill">
+          {{ activeProjectName }}
+        </div>
+
         <div class="section-pill">{{ currentSectionLabel }}</div>
+
         <div class="status-pill">
           {{ status }}
         </div>
@@ -63,15 +103,19 @@ onMounted(async () => {
             v-for="item in navItems"
             :key="item.key"
             class="nav-btn"
-            :class="{ active: workspace.currentSection === item.key }"
-            @click="workspace.openSection(item.key)"
+            :class="{
+              active: workspace.currentSection === item.key,
+              disabled: !canOpen(item)
+            }"
+            @click="openSection(item)"
         >
           {{ item.label }}
         </button>
       </aside>
 
       <section class="content">
-        <RuleWorkbench v-if="workspace.currentSection === 'rules'"/>
+        <ProjectWorkbench v-if="workspace.currentSection === 'projects'"/>
+        <RuleWorkbench v-else-if="workspace.currentSection === 'rules'"/>
         <EntriesWorkbench v-else-if="workspace.currentSection === 'entries'"/>
         <PreviewWorkbench v-else-if="workspace.currentSection === 'preview'"/>
         <SettingsWorkbench v-else/>
@@ -113,13 +157,21 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
+.project-pill,
 .section-pill,
 .status-pill {
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 14px;
+}
+
+.project-pill {
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
 }
 
 .section-pill {
@@ -160,7 +212,12 @@ onMounted(async () => {
   border-color: #a5b4fc;
 }
 
+.nav-btn.disabled {
+  opacity: 0.5;
+}
+
 .content {
   padding: 24px;
+  min-width: 0;
 }
 </style>

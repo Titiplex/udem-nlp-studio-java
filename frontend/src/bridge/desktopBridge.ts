@@ -43,6 +43,9 @@ export interface RuleDetail {
     description: string
     payload: Record<string, unknown>
     rawYaml: string
+    version: number | null
+    updatedBy: string | null
+    updatedAt: string | null
 }
 
 export interface RuleDraftResult {
@@ -92,6 +95,9 @@ export interface EntryDetail {
     correctedTranslation: string
     approved: boolean
     conlluPreview: string
+    version: number | null
+    updatedBy: string | null
+    updatedAt: string | null
 }
 
 export interface CorrectionRunRequest {
@@ -137,12 +143,100 @@ export interface AnnotationSettings {
     glossMapYaml: string
     baseYamlPreview: string
     effectiveYamlPreview: string
+    version: number | null
+    updatedBy: string | null
+    updatedAt: string | null
+}
+
+export interface ProjectSummary {
+    projectId: string
+    name: string
+    active: boolean
+    sourceKind: string
+    sourceLabel: string
+    lastOpenedAt: string
+}
+
+export interface ProjectMember {
+    principalId: string
+    displayName: string
+    role: string
+}
+
+export interface ProjectSource {
+    id: string
+    kind: string
+    host: string
+    port: number
+    database: string
+    schema: string
+    ssl: boolean
+    secretsConfigured: boolean
+}
+
+export interface ProjectDetail {
+    projectId: string
+    name: string
+    version: string
+    active: boolean
+    members: ProjectMember[]
+    sources: ProjectSource[]
+}
+
+export interface ProjectConnectionStatus {
+    success: boolean
+    message: string
+}
+
+export interface CreateProjectRequest {
+    name: string
+    directory: string
+    sourceId: string
+    host: string
+    port: number
+    database: string
+    schema: string
+    ssl: boolean
+    username: string
+    password: string
+}
+
+export interface RegisterProjectRequest {
+    manifestPath: string
+}
+
+export interface SwitchProjectRequest {
+    projectId: string
+}
+
+export interface SaveSecretsRequest {
+    projectId: string
+    usernameRef: string
+    username: string
+    passwordRef: string
+    password: string
 }
 
 export interface DesktopBridge {
     ping(): string
 
     getAppInfo(): string
+
+    listProjects(): string
+
+    getActiveProject(): string
+
+    registerProject(payloadJson: string): string
+
+    createProject(payloadJson: string): string
+
+    switchProject(payloadJson: string): string
+
+    saveProjectSecrets(payloadJson: string): string
+
+    testActiveProjectConnection(): string
+
+    initializeActiveProjectSchema(): string
 
     listRules(): string
 
