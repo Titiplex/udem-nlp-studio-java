@@ -5,6 +5,7 @@ import {useAnnotationSettingsStore} from '../../stores/annotationSettingsStore'
 import StringListEditor from './StringListEditor.vue'
 import LexiconEditor from './LexiconEditor.vue'
 import ExtractorEditor from './ExtractorEditor.vue'
+import ConflictBanner from '../common/ConflictBanner.vue'
 
 const store = useAnnotationSettingsStore()
 
@@ -39,7 +40,16 @@ onMounted(async () => {
       </div>
     </div>
 
-    <p v-if="store.statusMessage" class="status-line">{{ store.statusMessage }}</p>
+    <ConflictBanner
+        v-if="store.hasConflict"
+        title="Annotation settings conflict"
+        :message="store.conflictMessage"
+        :can-reload="true"
+        @reload="store.reloadRemoteVersion()"
+        @dismiss="store.clearConflict()"
+    />
+
+    <p v-if="store.statusMessage && !store.hasConflict" class="status-line">{{ store.statusMessage }}</p>
 
     <div class="editor-grid">
       <StringListEditor

@@ -5,6 +5,7 @@ import {useEntryEditorStore} from '../../stores/entryEditorStore'
 import EntryListPane from './EntryListPane.vue'
 import EntryDetailForm from './EntryDetailForm.vue'
 import EntryDiffPane from './EntryDiffPane.vue'
+import ConflictBanner from '../common/ConflictBanner.vue'
 
 const store = useEntryEditorStore()
 
@@ -55,7 +56,16 @@ onMounted(async () => {
         </div>
       </div>
 
-      <p v-if="store.statusMessage" class="status-line">{{ store.statusMessage }}</p>
+      <ConflictBanner
+          v-if="store.hasConflict"
+          title="Entry save conflict"
+          :message="store.conflictMessage"
+          :can-reload="!!store.selectedEntryId || !!store.draft.id"
+          @reload="store.reloadRemoteVersion()"
+          @dismiss="store.clearConflict()"
+      />
+
+      <p v-if="store.statusMessage && !store.hasConflict" class="status-line">{{ store.statusMessage }}</p>
 
       <section class="workspace-tools">
         <div class="tool-card">

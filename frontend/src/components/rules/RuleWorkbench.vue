@@ -9,6 +9,7 @@ import VisualRuleBuilder from './VisualRuleBuilder.vue'
 import YamlRuleEditor from './YamlRuleEditor.vue'
 import RulePreviewPane from './RulePreviewPane.vue'
 import ValidationPanel from './ValidationPanel.vue'
+import ConflictBanner from '../common/ConflictBanner.vue'
 
 const store = useRuleEditorStore()
 
@@ -84,7 +85,16 @@ onMounted(async () => {
         </div>
       </div>
 
-      <p v-if="store.statusMessage" class="status-line">{{ store.statusMessage }}</p>
+      <ConflictBanner
+          v-if="store.hasConflict"
+          title="Rule save conflict"
+          :message="store.conflictMessage"
+          :can-reload="!!store.selectedRuleId"
+          @reload="store.reloadRemoteVersion()"
+          @dismiss="store.clearConflict()"
+      />
+
+      <p v-if="store.statusMessage && !store.hasConflict" class="status-line">{{ store.statusMessage }}</p>
 
       <RuleMetadataForm
           :model-value="store.draft"

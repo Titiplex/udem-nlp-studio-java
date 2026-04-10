@@ -30,6 +30,10 @@ function emptyEntry(): EntryDetail {
     }
 }
 
+function isConflictMessage(message?: string | null): boolean {
+    return !!message && message.toLowerCase().startsWith('conflict:')
+}
+
 export const useEntryEditorStore = defineStore('entryEditor', {
     state: () => ({
         entries: [] as EntrySummary[],
@@ -38,6 +42,7 @@ export const useEntryEditorStore = defineStore('entryEditor', {
         busy: false,
         dirty: false,
         statusMessage: '',
+        conflictMessage: '',
         importBuffer: '',
         aggregateConlluPreview: '',
         aggregateRawPreview: '',
@@ -69,9 +74,22 @@ export const useEntryEditorStore = defineStore('entryEditor', {
 
             return parts.join(' • ')
         },
+
+        hasConflict(state): boolean {
+            return !!state.conflictMessage
+        },
     },
 
     actions: {
+        clearConflict() {
+            this.conflictMessage = ''
+        },
+
+        setConflict(message: string) {
+            this.conflictMessage = message
+            this.statusMessage = message
+        },
+
         async refreshEntries() {
             const resp = callBridge<EntrySummary[]>('listEntries')
             if (!resp.success) {
@@ -98,10 +116,21 @@ export const useEntryEditorStore = defineStore('entryEditor', {
                 this.selectedEntryId = id
                 this.draft = structuredClone(resp.data)
                 this.dirty = false
+                this.clearConflict()
                 this.statusMessage = 'Entrée chargée.'
             } finally {
                 this.busy = false
             }
+        },
+
+        async reloadRemoteVersion() {
+            if (!this.selectedEntryId) {
+                if (this.draft.id) {
+                    await this.loadEntry(this.draft.id)
+                }
+                return
+            }
+            await this.loadEntry(this.selectedEntryId)
         },
 
         createNewEntry() {
@@ -114,6 +143,7 @@ export const useEntryEditorStore = defineStore('entryEditor', {
                 documentOrder: nextOrder,
             }
             this.dirty = false
+            this.clearConflict()
             this.statusMessage = 'Nouvelle entrée.'
         },
 
@@ -133,6 +163,10 @@ export const useEntryEditorStore = defineStore('entryEditor', {
         async saveEntry() {
             const resp = callBridge<EntryDetail>('saveEntry', JSON.stringify(this.draft))
             if (!resp.success || !resp.data) {
+                if (isConflictMessage(resp.message)) {
+                    this.setConflict(resp.message ?? 'Conflict detected.')
+                    return
+                }
                 this.statusMessage = resp.message ?? 'Sauvegarde impossible.'
                 return
             }
@@ -140,6 +174,7 @@ export const useEntryEditorStore = defineStore('entryEditor', {
             this.draft = structuredClone(resp.data)
             this.selectedEntryId = resp.data.id
             this.dirty = false
+            this.clearConflict()
             this.statusMessage = 'Entrée sauvegardée.'
             await this.refreshEntries()
         },
@@ -157,12 +192,17 @@ export const useEntryEditorStore = defineStore('entryEditor', {
 
             const resp = callBridge<EntryDetail>('runCorrection', JSON.stringify(payload))
             if (!resp.success || !resp.data) {
+                if (isConflictMessage(resp.message)) {
+                    this.setConflict(resp.message ?? 'Conflict detected.')
+                    return
+                }
                 this.statusMessage = resp.message ?? 'Correction impossible.'
                 return
             }
 
             this.draft = structuredClone(resp.data)
             this.dirty = false
+            this.clearConflict()
             this.statusMessage = 'Correction exécutée.'
             await this.refreshEntries()
         },
@@ -180,6 +220,7 @@ export const useEntryEditorStore = defineStore('entryEditor', {
             }
 
             this.importBuffer = ''
+            this.clearConflict()
             this.statusMessage = `${resp.data.importedEntries} entrées importées.`
             await this.refreshEntries()
 
@@ -199,6 +240,7 @@ export const useEntryEditorStore = defineStore('entryEditor', {
                 return
             }
 
+            this.clearConflict()
             this.statusMessage =
                 `Correction en lot terminée : ${resp.data.correctedEntries}/${resp.data.totalEntries} corrigées` +
                 (resp.data.skippedApprovedEntries > 0

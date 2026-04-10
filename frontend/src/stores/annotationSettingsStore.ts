@@ -16,12 +16,17 @@ function emptySettings(): AnnotationSettings {
     }
 }
 
+function isConflictMessage(message?: string | null): boolean {
+    return !!message && message.toLowerCase().startsWith('conflict:')
+}
+
 export const useAnnotationSettingsStore = defineStore('annotationSettings', {
     state: () => ({
         draft: emptySettings() as AnnotationSettings,
         busy: false,
         dirty: false,
         statusMessage: '',
+        conflictMessage: '',
     }),
 
     getters: {
@@ -42,9 +47,22 @@ export const useAnnotationSettingsStore = defineStore('annotationSettings', {
 
             return parts.join(' • ')
         },
+
+        hasConflict(state): boolean {
+            return !!state.conflictMessage
+        },
     },
 
     actions: {
+        clearConflict() {
+            this.conflictMessage = ''
+        },
+
+        setConflict(message: string) {
+            this.conflictMessage = message
+            this.statusMessage = message
+        },
+
         async loadSettings() {
             this.busy = true
             try {
@@ -56,10 +74,15 @@ export const useAnnotationSettingsStore = defineStore('annotationSettings', {
 
                 this.draft = structuredClone(resp.data)
                 this.dirty = false
+                this.clearConflict()
                 this.statusMessage = 'Settings d’annotation chargés.'
             } finally {
                 this.busy = false
             }
+        },
+
+        async reloadRemoteVersion() {
+            await this.loadSettings()
         },
 
         setDraft(next: AnnotationSettings) {
@@ -82,12 +105,17 @@ export const useAnnotationSettingsStore = defineStore('annotationSettings', {
             )
 
             if (!resp.success || !resp.data) {
+                if (isConflictMessage(resp.message)) {
+                    this.setConflict(resp.message ?? 'Conflict detected.')
+                    return
+                }
                 this.statusMessage = resp.message ?? 'Sauvegarde impossible.'
                 return
             }
 
             this.draft = structuredClone(resp.data)
             this.dirty = false
+            this.clearConflict()
             this.statusMessage = 'Settings d’annotation sauvegardés.'
         },
     },

@@ -27,6 +27,10 @@ function emptyRule(): RuleDetail {
     }
 }
 
+function isConflictMessage(message?: string | null): boolean {
+    return !!message && message.toLowerCase().startsWith('conflict:')
+}
+
 export const useRuleEditorStore = defineStore('ruleEditor', {
     state: () => ({
         rules: [] as RuleSummary[],
@@ -36,6 +40,7 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
         activeTab: 'visual' as EditorTab,
         busy: false,
         statusMessage: '',
+        conflictMessage: '',
         dirty: false,
     }),
 
@@ -61,9 +66,22 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
 
             return parts.join(' • ')
         },
+
+        hasConflict(state): boolean {
+            return !!state.conflictMessage
+        },
     },
 
     actions: {
+        clearConflict() {
+            this.conflictMessage = ''
+        },
+
+        setConflict(message: string) {
+            this.conflictMessage = message
+            this.statusMessage = message
+        },
+
         async refreshRules() {
             const resp = callBridge<RuleSummary[]>('listRules')
             if (!resp.success) {
@@ -91,9 +109,16 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
                 this.draft = structuredClone(resp.data)
                 this.issues = []
                 this.dirty = false
+                this.clearConflict()
                 this.statusMessage = 'Règle chargée.'
             } finally {
                 this.busy = false
+            }
+        },
+
+        async reloadRemoteVersion() {
+            if (this.selectedRuleId) {
+                await this.loadRule(this.selectedRuleId)
             }
         },
 
@@ -185,6 +210,10 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
         saveDraft() {
             const resp = callBridge<RuleDraftResult>('saveRule', JSON.stringify(this.draft))
             if (!resp.success || !resp.data) {
+                if (isConflictMessage(resp.message)) {
+                    this.setConflict(resp.message ?? 'Conflict detected.')
+                    return
+                }
                 this.statusMessage = resp.message ?? 'Sauvegarde impossible.'
                 return
             }
@@ -192,6 +221,7 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
             this.draft = structuredClone(resp.data.rule)
             this.issues = resp.data.issues ?? []
             this.dirty = false
+            this.clearConflict()
             this.statusMessage = 'Règle sauvegardée.'
             void this.refreshRules()
         },
@@ -215,6 +245,7 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
             }
             this.issues = []
             this.dirty = false
+            this.clearConflict()
             this.activeTab = 'visual'
             this.statusMessage = 'Nouveau draft.'
         },
