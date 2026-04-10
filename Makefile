@@ -1,4 +1,4 @@
-.PHONY: help dev release-app release-cli package-app-linux package-app-macos package-cli-linux package-cli-macos package-app-windows package-cli-windows chmod-scripts
+.PHONY: help dev build release-app release-cli package-app-linux package-app-macos package-cli-linux package-cli-macos package-app-windows package-cli-windows chmod-scripts
 
 VERSION ?=
 
@@ -57,3 +57,7 @@ chmod-scripts:
 dev:
 	mvn -pl core,backend,app -am clean install -DskipTests
 	mvn -f app/pom.xml clean javafx:run
+
+build:
+	mvn -pl core,backend,app -am clean install -DskipTests
+	mvn -f app/pom.xml clean

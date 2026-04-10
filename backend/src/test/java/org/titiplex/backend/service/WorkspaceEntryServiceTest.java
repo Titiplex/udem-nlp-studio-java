@@ -10,6 +10,7 @@ import org.titiplex.backend.dto.*;
 import org.titiplex.backend.repository.RuleRepository;
 import org.titiplex.backend.repository.WorkspaceEntryRepository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -48,7 +49,10 @@ class WorkspaceEntryServiceTest {
                 "",
                 "",
                 false,
-                ""
+                "",
+                1L,
+                "",
+                Instant.now()
         ));
 
         assertNotNull(saved.id());
@@ -68,7 +72,10 @@ class WorkspaceEntryServiceTest {
                 "",
                 "",
                 false,
-                ""
+                "",
+                1L,
+                "",
+                Instant.now()
         ));
 
         EntryDetailDto corrected = workspaceEntryService.runCorrection(
@@ -92,7 +99,10 @@ class WorkspaceEntryServiceTest {
                 "MANUAL-GLOSS",
                 "MANUAL-TRAD",
                 true,
-                "manual-preview"
+                "manual-preview",
+                1L,
+                "",
+                Instant.now()
         ));
 
         EntryDetailDto result = workspaceEntryService.runCorrection(
@@ -125,12 +135,34 @@ class WorkspaceEntryServiceTest {
     @Test
     void batchCorrectionShouldProcessAllNonApprovedEntries() {
         workspaceEntryService.saveEntry(new EntryDetailDto(
-                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
-                "", "", "", false, ""
+                null,
+                1,
+                "Ix naq",
+                "A1 ganar",
+                "Il gagne.",
+                "",
+                "",
+                "",
+                false,
+                "",
+                1L,
+                "",
+                Instant.now()
         ));
         workspaceEntryService.saveEntry(new EntryDetailDto(
-                null, 2, "Ha ix to", "DEM A1 ir", "Celui-ci va.",
-                "", "", "", true, ""
+                null,
+                2,
+                "Ha ix to",
+                "DEM A1 ir",
+                "Celui-ci va.",
+                "",
+                "",
+                "",
+                true,
+                "",
+                1L,
+                "",
+                Instant.now()
         ));
 
         BatchCorrectionResultDto result = workspaceEntryService.runCorrectionOnAll(
@@ -145,8 +177,19 @@ class WorkspaceEntryServiceTest {
     @Test
     void exportRawTextShouldReturnWorkspaceText() {
         workspaceEntryService.saveEntry(new EntryDetailDto(
-                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
-                "Ix naq", "A1 ganar", "Il gagne.", false, "# sent_id = 1"
+                null,
+                1,
+                "Ix naq",
+                "A1 ganar",
+                "Il gagne.",
+                "Ix naq",
+                "A1 ganar",
+                "Il gagne.",
+                false,
+                "# sent_id = 1",
+                1L,
+                "",
+                Instant.now()
         ));
 
         TextExportDto result = workspaceEntryService.exportRawText(
@@ -161,9 +204,19 @@ class WorkspaceEntryServiceTest {
     @Test
     void exportConlluShouldReturnAggregatedPreview() {
         workspaceEntryService.saveEntry(new EntryDetailDto(
-                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
-                "Ix naq", "A1 ganar", "Il gagne.", false,
-                "# sent_id = 1\n# text = Ix naq"
+                null,
+                1,
+                "Ix naq",
+                "A1 ganar",
+                "Il gagne.",
+                "Ix naq",
+                "A1 ganar",
+                "Il gagne.",
+                false,
+                "# sent_id = 1\n# text = Ix naq",
+                1L,
+                "",
+                Instant.now()
         ));
 
         TextExportDto result = workspaceEntryService.exportConllu(
@@ -215,7 +268,10 @@ class WorkspaceEntryServiceTest {
                             feats_template:
                               Pers[subj]: "{agreement_verbs.A.person}"
                               Number[subj]: "{agreement_verbs.A.number}"
-                        """
+                        """,
+                1L,
+                "",
+                Instant.now()
         ));
 
         EntryDetailDto saved = workspaceEntryService.saveEntry(new EntryDetailDto(
@@ -228,7 +284,10 @@ class WorkspaceEntryServiceTest {
                 "",
                 "",
                 false,
-                ""
+                "",
+                1L,
+                "",
+                Instant.now()
         ));
 
         EntryDetailDto corrected = workspaceEntryService.runCorrection(

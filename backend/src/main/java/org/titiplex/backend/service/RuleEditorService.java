@@ -71,7 +71,10 @@ public class RuleEditorService {
                     dto.priority(),
                     dto.description(),
                     payload,
-                    dto.rawYaml()
+                    dto.rawYaml(),
+                    dto.version(),
+                    dto.updatedBy(),
+                    dto.updatedAt()
             );
 
             issues.addAll(validateIssues(normalized));
@@ -116,7 +119,10 @@ public class RuleEditorService {
                 dto.priority(),
                 dto.description(),
                 dto.payload(),
-                yaml
+                yaml,
+                dto.version(),
+                dto.updatedBy(),
+                dto.updatedAt()
         );
 
         return new RuleDraftResultDto(normalized, issues);

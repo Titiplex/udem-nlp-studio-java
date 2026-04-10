@@ -11,6 +11,8 @@ import org.titiplex.backend.repository.RuleRepository;
 import org.titiplex.backend.repository.WorkspaceEntryRepository;
 import org.titiplex.conllu.AnnotationConfig;
 
+import java.time.Instant;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(classes = BackendApplication.class)
@@ -70,7 +72,10 @@ class AnnotationSettingsServiceTest {
                         """.trim(),
                 "{}",
                 "",
-                ""
+                "",
+                1L,
+                "",
+                Instant.now()
         ));
 
         assertTrue(saved.posDefinitionsYaml().contains("VERB"));
@@ -98,7 +103,10 @@ class AnnotationSettingsServiceTest {
                         """.trim(),
                 "{}",
                 "",
-                ""
+                "",
+                1L,
+                "",
+                Instant.now()
         ));
 
         AnnotationConfig config = annotationConfigComposerService.buildAnnotationConfig();
