@@ -59,9 +59,12 @@ public class WorkspaceEntryService {
 
         entity.setId(id);
         entity.setDocumentOrder(dto.documentOrder());
+        entity.setContextText(defaultString(dto.contextText()));
+        entity.setSurfaceText(defaultString(dto.surfaceText()));
         entity.setRawChujText(defaultString(dto.rawChujText()));
         entity.setRawGlossText(defaultString(dto.rawGlossText()));
         entity.setTranslation(defaultString(dto.translation()));
+        entity.setComments(defaultString(dto.comments()));
         entity.setCorrectedChujText(defaultString(dto.correctedChujText()));
         entity.setCorrectedGlossText(defaultString(dto.correctedGlossText()));
         entity.setCorrectedTranslation(defaultString(dto.correctedTranslation()));
@@ -136,9 +139,12 @@ public class WorkspaceEntryService {
             created.add(new WorkspaceEntryEntity(
                     UUID.randomUUID(),
                     nextOrder++,
+                    "",
+                    "",
                     defaultString(block.chujText()),
                     defaultString(block.glossText()),
                     defaultString(block.translation()),
+                    "",
                     "",
                     "",
                     "",
@@ -216,9 +222,12 @@ public class WorkspaceEntryService {
         workspaceEntryRepository.save(new WorkspaceEntryEntity(
                 UUID.randomUUID(),
                 1,
+                "",
+                "",
                 "Ix-naq aj winh",
-                "A1-B2 ganar DET hombre",
+                "A1-B2 ganar DET homme",
                 "L’homme nous a gagnés.",
+                "",
                 "",
                 "",
                 "",
@@ -229,9 +238,12 @@ public class WorkspaceEntryService {
         workspaceEntryRepository.save(new WorkspaceEntryEntity(
                 UUID.randomUUID(),
                 2,
+                "",
+                "",
                 "Ha’ ix to",
                 "DEM A1 ir",
                 "Celui-ci va.",
+                "",
                 "",
                 "",
                 "",
@@ -378,9 +390,12 @@ public class WorkspaceEntryService {
         return new EntryDetailDto(
                 entity.getId(),
                 entity.getDocumentOrder(),
+                defaultString(entity.getContextText()),
+                defaultString(entity.getSurfaceText()),
                 defaultString(entity.getRawChujText()),
                 defaultString(entity.getRawGlossText()),
                 defaultString(entity.getTranslation()),
+                defaultString(entity.getComments()),
                 defaultString(entity.getCorrectedChujText()),
                 defaultString(entity.getCorrectedGlossText()),
                 defaultString(entity.getCorrectedTranslation()),

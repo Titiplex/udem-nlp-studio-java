@@ -22,6 +22,14 @@ public class WorkspaceEntryEntity {
 
     @Lob
     @Column(columnDefinition = "CLOB")
+    private String contextText;
+
+    @Lob
+    @Column(columnDefinition = "CLOB")
+    private String surfaceText;
+
+    @Lob
+    @Column(columnDefinition = "CLOB")
     private String rawChujText;
 
     @Lob
@@ -31,6 +39,10 @@ public class WorkspaceEntryEntity {
     @Lob
     @Column(columnDefinition = "CLOB")
     private String translation;
+
+    @Lob
+    @Column(columnDefinition = "CLOB")
+    private String comments;
 
     @Lob
     @Column(columnDefinition = "CLOB")

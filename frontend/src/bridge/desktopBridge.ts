@@ -84,9 +84,12 @@ export interface EntrySummary {
 export interface EntryDetail {
     id: string | null
     documentOrder: number
+    contextText: string
+    surfaceText: string
     rawChujText: string
     rawGlossText: string
     translation: string
+    comments: string
     correctedChujText: string
     correctedGlossText: string
     correctedTranslation: string

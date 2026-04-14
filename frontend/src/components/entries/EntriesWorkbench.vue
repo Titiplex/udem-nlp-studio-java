@@ -58,13 +58,13 @@ onMounted(async () => {
         <div class="tool-card">
           <h3>Corpus import</h3>
           <p class="tool-help">
-            Colle ici un corpus brut au format interlinéaire : ligne Chuj, ligne gloss,
+            Import historique au format pipeline : ligne segmentation, ligne gloss,
             ligne traduction, puis ligne vide entre les entrées.
           </p>
           <textarea
               v-model="store.importBuffer"
               class="tool-textarea"
-              placeholder="Ix naq&#10;A1 ganar&#10;Il gagne.&#10;&#10;Ha ix to&#10;DEM A1 ir&#10;Celui-ci va."
+              placeholder="Ix-naq aj winh&#10;A1-B2 ganar DET homme&#10;L’homme nous a gagnés.&#10;&#10;Ha’ ix to&#10;DEM A1 ir&#10;Celui-ci va."
           />
           <div class="tool-actions">
             <button class="action-btn" @click="store.importEntries(false)">Import append</button>
@@ -101,7 +101,7 @@ onMounted(async () => {
 
       <div class="diff-grid">
         <EntryDiffPane
-            label="Chuj text"
+            label="Segmentation"
             :raw="store.draft.rawChujText"
             :corrected="store.draft.correctedChujText"
         />

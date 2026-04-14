@@ -16,9 +16,12 @@ function emptyEntry(): EntryDetail {
     return {
         id: null,
         documentOrder: 1,
+        contextText: '',
+        surfaceText: '',
         rawChujText: '',
         rawGlossText: '',
         translation: '',
+        comments: '',
         correctedChujText: '',
         correctedGlossText: '',
         correctedTranslation: '',
@@ -110,6 +113,19 @@ export const useEntryEditorStore = defineStore('entryEditor', {
         },
 
         async saveEntry() {
+            const segmentation = this.draft.rawChujText.trim()
+            const translation = this.draft.translation.trim()
+
+            if (!segmentation) {
+                this.statusMessage = 'La segmentation morphémique est obligatoire.'
+                return
+            }
+
+            if (!translation) {
+                this.statusMessage = 'La traduction est obligatoire.'
+                return
+            }
+
             const resp = callBridge<EntryDetail>('saveEntry', JSON.stringify(this.draft))
             if (!resp.success || !resp.data) {
                 this.statusMessage = resp.message ?? 'Sauvegarde impossible.'
