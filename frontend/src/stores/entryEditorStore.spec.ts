@@ -11,6 +11,8 @@ describe('entryEditorStore', () => {
         setActivePinia(createPinia())
 
         window.appBridge = {
+            getAnnotationSettings: () => ok(null),
+            saveAnnotationSettings: () => ok(null),
             ping: () => ok('pong'),
             getAppInfo: () => ok({name: 'NLP Studio', version: '0.1.0'}),
             listRules: () => ok([]),
@@ -31,9 +33,12 @@ describe('entryEditorStore', () => {
                 ok({
                     id: 'entry-1',
                     documentOrder: 1,
-                    rawChujText: 'Ix naq',
-                    rawGlossText: 'A1 ganar',
+                    contextText: 'Field note A',
+                    surfaceText: 'Ix naq',
+                    rawChujText: 'Ix-naq',
+                    rawGlossText: 'A1-ganar',
                     translation: 'Il gagne.',
+                    comments: 'Initial comment',
                     correctedChujText: '',
                     correctedGlossText: '',
                     correctedTranslation: '',
@@ -51,12 +56,12 @@ describe('entryEditorStore', () => {
             exportRawText: () =>
                 ok({
                     fileName: 'workspace.txt',
-                    content: 'Ix naq\nA1 ganar\nIl gagne.',
+                    content: 'Ix-naq\nA1-ganar\nIl gagne.',
                 }),
             exportConllu: () =>
                 ok({
                     fileName: 'workspace.conllu',
-                    content: '# sent_id = 1\n# text = Ix naq',
+                    content: '# sent_id = 1\n# text = Ix-naq',
                 }),
             listRuleDescriptors: () => ok([]),
             listRuleSchemas: () => ok([]),
@@ -69,15 +74,18 @@ describe('entryEditorStore', () => {
                 ok({
                     id: 'entry-1',
                     documentOrder: 1,
-                    rawChujText: 'Ix naq',
-                    rawGlossText: 'A1 ganar',
+                    contextText: 'Field note A',
+                    surfaceText: 'Ix naq',
+                    rawChujText: 'Ix-naq',
+                    rawGlossText: 'A1-ganar',
                     translation: 'Il gagne.',
-                    correctedChujText: 'Ix naq',
-                    correctedGlossText: 'A1 ganar',
+                    comments: 'Initial comment',
+                    correctedChujText: 'Ix-naq',
+                    correctedGlossText: 'A1-ganar',
                     correctedTranslation: 'Il gagne.',
                     approved: false,
-                    conlluPreview: '# sent_id = 1\n# text = Ix naq',
-                }),
+                    conlluPreview: '# sent_id = 1\n# text = Ix-naq',
+                })
         }
     })
 
@@ -89,25 +97,74 @@ describe('entryEditorStore', () => {
         expect(store.selectedEntryId).toBe('entry-1')
 
         await store.loadEntry('entry-1')
-        expect(store.draft.rawChujText).toBe('Ix naq')
+        expect(store.draft.contextText).toBe('Field note A')
+        expect(store.draft.surfaceText).toBe('Ix naq')
+        expect(store.draft.rawChujText).toBe('Ix-naq')
+        expect(store.draft.comments).toBe('Initial comment')
         expect(store.dirty).toBe(false)
     })
 
-    it('saves the current draft', async () => {
+    it('creates a new structured empty entry', () => {
+        const store = useEntryEditorStore()
+
+        store.createNewEntry()
+
+        expect(store.draft.contextText).toBe('')
+        expect(store.draft.surfaceText).toBe('')
+        expect(store.draft.rawChujText).toBe('')
+        expect(store.draft.rawGlossText).toBe('')
+        expect(store.draft.translation).toBe('')
+        expect(store.draft.comments).toBe('')
+        expect(store.draft.correctedChujText).toBe('')
+    })
+
+    it('refuses to save when segmentation is missing', async () => {
         const store = useEntryEditorStore()
 
         store.createNewEntry()
         store.patchDraft({
-            rawChujText: 'Ha ix to',
-            rawGlossText: 'DEM A1 ir',
             translation: 'Celui-ci va.',
+        })
+
+        await store.saveEntry()
+
+        expect(store.statusMessage).toBe('La segmentation morphémique est obligatoire.')
+    })
+
+    it('refuses to save when translation is missing', async () => {
+        const store = useEntryEditorStore()
+
+        store.createNewEntry()
+        store.patchDraft({
+            rawChujText: 'Ha-ix-to',
+        })
+
+        await store.saveEntry()
+
+        expect(store.statusMessage).toBe('La traduction est obligatoire.')
+    })
+
+    it('saves the current draft with structured fields', async () => {
+        const store = useEntryEditorStore()
+
+        store.createNewEntry()
+        store.patchDraft({
+            contextText: 'Narration',
+            surfaceText: 'Ha ix to',
+            rawChujText: 'Ha-ix-to',
+            rawGlossText: 'DEM-A1-ir',
+            translation: 'Celui-ci va.',
+            comments: 'Needs review',
         })
 
         await store.saveEntry()
 
         expect(store.statusMessage).toBe('Entrée sauvegardée.')
         expect(store.dirty).toBe(false)
-        expect(store.draft.rawChujText).toBe('Ha ix to')
+        expect(store.draft.contextText).toBe('Narration')
+        expect(store.draft.surfaceText).toBe('Ha ix to')
+        expect(store.draft.rawChujText).toBe('Ha-ix-to')
+        expect(store.draft.comments).toBe('Needs review')
     })
 
     it('runs correction and updates preview', async () => {
@@ -116,14 +173,14 @@ describe('entryEditorStore', () => {
         await store.loadEntry('entry-1')
         await store.runCorrection()
 
-        expect(store.draft.correctedChujText).toBe('Ix naq')
-        expect(store.draft.conlluPreview).toContain('# text = Ix naq')
+        expect(store.draft.correctedChujText).toBe('Ix-naq')
+        expect(store.draft.conlluPreview).toContain('# text = Ix-naq')
     })
 
     it('imports entries from raw text buffer', async () => {
         const store = useEntryEditorStore()
 
-        store.importBuffer = 'Ix naq\nA1 ganar\nIl gagne.'
+        store.importBuffer = 'Ix-naq\nA1-ganar\nIl gagne.'
         await store.importEntries(true)
 
         expect(store.importBuffer).toBe('')
@@ -136,8 +193,8 @@ describe('entryEditorStore', () => {
         await store.loadAggregateRawPreview(true, false)
         await store.loadAggregateConlluPreview(true, false)
 
-        expect(store.aggregateRawPreview).toContain('Ix naq')
-        expect(store.aggregateConlluPreview).toContain('# text = Ix naq')
+        expect(store.aggregateRawPreview).toContain('Ix-naq')
+        expect(store.aggregateConlluPreview).toContain('# text = Ix-naq')
     })
 
     it('runs batch correction', async () => {

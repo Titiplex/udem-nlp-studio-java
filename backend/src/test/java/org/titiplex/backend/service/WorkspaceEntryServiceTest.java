@@ -41,9 +41,12 @@ class WorkspaceEntryServiceTest {
         EntryDetailDto saved = workspaceEntryService.saveEntry(new EntryDetailDto(
                 null,
                 1,
+                "Field note A",
                 "Ix naq",
-                "A1 ganar",
+                "Ix-naq",
+                "A1-ganar",
                 "Il gagne.",
+                "Comment A",
                 "",
                 "",
                 "",
@@ -52,8 +55,37 @@ class WorkspaceEntryServiceTest {
         ));
 
         assertNotNull(saved.id());
+        assertEquals("Field note A", saved.contextText());
+        assertEquals("Ix naq", saved.surfaceText());
+        assertEquals("Comment A", saved.comments());
         assertEquals(1, workspaceEntryService.listEntries().size());
-        assertEquals("Ix naq", workspaceEntryService.listEntries().getFirst().rawChujText());
+        assertEquals("Ix-naq", workspaceEntryService.listEntries().getFirst().rawChujText());
+    }
+
+    @Test
+    void getEntryShouldReturnStructuredFields() {
+        EntryDetailDto saved = workspaceEntryService.saveEntry(new EntryDetailDto(
+                null,
+                1,
+                "Context 1",
+                "Surface 1",
+                "Ix-naq",
+                "A1-ganar",
+                "Il gagne.",
+                "Comment 1",
+                "",
+                "",
+                "",
+                false,
+                ""
+        ));
+
+        EntryDetailDto loaded = workspaceEntryService.getEntry(saved.id());
+
+        assertEquals("Context 1", loaded.contextText());
+        assertEquals("Surface 1", loaded.surfaceText());
+        assertEquals("Comment 1", loaded.comments());
+        assertEquals("Ix-naq", loaded.rawChujText());
     }
 
     @Test
@@ -61,9 +93,12 @@ class WorkspaceEntryServiceTest {
         EntryDetailDto saved = workspaceEntryService.saveEntry(new EntryDetailDto(
                 null,
                 1,
+                "Field note A",
                 "Ix naq",
-                "A1 ganar",
+                "Ix-naq",
+                "A1-ganar",
                 "Il gagne.",
+                "Comment A",
                 "",
                 "",
                 "",
@@ -75,8 +110,8 @@ class WorkspaceEntryServiceTest {
                 new CorrectionRunRequestDto(saved.id(), false)
         );
 
-        assertEquals("Ix naq", corrected.correctedChujText());
-        assertEquals("A1 ganar", corrected.correctedGlossText());
+        assertEquals("Ix-naq", corrected.correctedChujText());
+        assertEquals("A1-ganar", corrected.correctedGlossText());
         assertFalse(corrected.conlluPreview().isBlank());
     }
 
@@ -85,9 +120,12 @@ class WorkspaceEntryServiceTest {
         EntryDetailDto saved = workspaceEntryService.saveEntry(new EntryDetailDto(
                 null,
                 1,
+                "Field note A",
                 "Ix naq",
-                "A1 ganar",
+                "Ix-naq",
+                "A1-ganar",
                 "Il gagne.",
+                "Manual comment",
                 "MANUAL",
                 "MANUAL-GLOSS",
                 "MANUAL-TRAD",
@@ -100,6 +138,9 @@ class WorkspaceEntryServiceTest {
         );
 
         assertEquals("MANUAL", result.correctedChujText());
+        assertEquals("Field note A", result.contextText());
+        assertEquals("Ix naq", result.surfaceText());
+        assertEquals("Manual comment", result.comments());
         assertFalse(result.conlluPreview().isBlank());
     }
 
@@ -107,12 +148,12 @@ class WorkspaceEntryServiceTest {
     void importEntriesShouldCreateWorkspaceBlocks() {
         WorkspaceImportResultDto result = workspaceEntryService.importEntries(
                 new WorkspaceImportRequestDto("""
-                        Ix naq
-                        A1 ganar
+                        Ix-naq
+                        A1-ganar
                         Il gagne.
                         
-                        Ha ix to
-                        DEM A1 ir
+                        Ha-ix-to
+                        DEM-A1-ir
                         Celui-ci va.
                         """, true)
         );
@@ -120,17 +161,48 @@ class WorkspaceEntryServiceTest {
         assertEquals(2, result.importedEntries());
         assertEquals(2, result.totalEntries());
         assertEquals(2, workspaceEntryService.listEntries().size());
+
+        EntryDetailDto first = workspaceEntryService.getEntry(
+                workspaceEntryService.listEntries().getFirst().id()
+        );
+
+        assertEquals("", first.contextText());
+        assertEquals("", first.surfaceText());
+        assertEquals("", first.comments());
+        assertEquals("Ix-naq", first.rawChujText());
     }
 
     @Test
     void batchCorrectionShouldProcessAllNonApprovedEntries() {
         workspaceEntryService.saveEntry(new EntryDetailDto(
-                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
-                "", "", "", false, ""
+                null,
+                1,
+                "",
+                "",
+                "Ix-naq",
+                "A1-ganar",
+                "Il gagne.",
+                "",
+                "",
+                "",
+                "",
+                false,
+                ""
         ));
         workspaceEntryService.saveEntry(new EntryDetailDto(
-                null, 2, "Ha ix to", "DEM A1 ir", "Celui-ci va.",
-                "", "", "", true, ""
+                null,
+                2,
+                "",
+                "",
+                "Ha-ix-to",
+                "DEM-A1-ir",
+                "Celui-ci va.",
+                "",
+                "",
+                "",
+                "",
+                true,
+                ""
         ));
 
         BatchCorrectionResultDto result = workspaceEntryService.runCorrectionOnAll(
@@ -145,8 +217,19 @@ class WorkspaceEntryServiceTest {
     @Test
     void exportRawTextShouldReturnWorkspaceText() {
         workspaceEntryService.saveEntry(new EntryDetailDto(
-                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
-                "Ix naq", "A1 ganar", "Il gagne.", false, "# sent_id = 1"
+                null,
+                1,
+                "Context",
+                "Ix naq",
+                "Ix-naq",
+                "A1-ganar",
+                "Il gagne.",
+                "Comment",
+                "Ix-naq",
+                "A1-ganar",
+                "Il gagne.",
+                false,
+                "# sent_id = 1"
         ));
 
         TextExportDto result = workspaceEntryService.exportRawText(
@@ -154,16 +237,26 @@ class WorkspaceEntryServiceTest {
         );
 
         assertEquals("workspace.txt", result.fileName());
-        assertTrue(result.content().contains("Ix naq"));
-        assertTrue(result.content().contains("A1 ganar"));
+        assertTrue(result.content().contains("Ix-naq"));
+        assertTrue(result.content().contains("A1-ganar"));
     }
 
     @Test
     void exportConlluShouldReturnAggregatedPreview() {
         workspaceEntryService.saveEntry(new EntryDetailDto(
-                null, 1, "Ix naq", "A1 ganar", "Il gagne.",
-                "Ix naq", "A1 ganar", "Il gagne.", false,
-                "# sent_id = 1\n# text = Ix naq"
+                null,
+                1,
+                "Context",
+                "Ix naq",
+                "Ix-naq",
+                "A1-ganar",
+                "Il gagne.",
+                "Comment",
+                "Ix-naq",
+                "A1-ganar",
+                "Il gagne.",
+                false,
+                "# sent_id = 1\n# text = Ix-naq"
         ));
 
         TextExportDto result = workspaceEntryService.exportConllu(
@@ -171,7 +264,7 @@ class WorkspaceEntryServiceTest {
         );
 
         assertEquals("workspace.conllu", result.fileName());
-        assertTrue(result.content().contains("# text = Ix naq"));
+        assertTrue(result.content().contains("# text = Ix-naq"));
     }
 
     @Test
@@ -221,9 +314,12 @@ class WorkspaceEntryServiceTest {
         EntryDetailDto saved = workspaceEntryService.saveEntry(new EntryDetailDto(
                 null,
                 1,
+                "Context",
+                "ix naq",
                 "ix-naq",
                 "A1-B3-ganar",
                 "I beat you",
+                "Comment",
                 "",
                 "",
                 "",
