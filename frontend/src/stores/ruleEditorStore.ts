@@ -169,6 +169,7 @@ export const useRuleEditorStore = defineStore('ruleEditor', {
             }
 
             this.draft = structuredClone(resp.data.rule)
+            this.selectedRuleId = resp.data.rule.id ?? null
             this.issues = resp.data.issues ?? []
             this.dirty = false
             this.statusMessage = 'Règle sauvegardée.'

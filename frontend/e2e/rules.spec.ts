@@ -13,8 +13,14 @@ test.describe('rules workspace', () => {
         await page.getByRole('button', {name: 'Annotation rule', exact: true}).click()
         await expect(page.getByText('Nouveau draft.')).toBeVisible()
 
-        await page.getByLabel('Name').fill('E2E created rule')
-        await page.getByLabel('Scope').fill('token')
+        const nameInput = page.getByLabel('Name')
+        const scopeInput = page.getByLabel('Scope')
+
+        await nameInput.fill('E2E created rule')
+        await expect(nameInput).toHaveValue('E2E created rule')
+
+        await scopeInput.fill('token')
+        await expect(scopeInput).toHaveValue('token')
 
         await page.getByRole('button', {name: 'Generate YAML', exact: true}).click()
         await expect(page.getByText('YAML généré.')).toBeVisible()
@@ -23,14 +29,15 @@ test.describe('rules workspace', () => {
 
         const yamlEditor = page.locator('textarea.yaml-editor')
         await expect(yamlEditor).toBeVisible()
-        await expect(yamlEditor).toHaveValue(/name:/)
+        await expect(yamlEditor).toHaveValue(/name: E2E created rule/)
         await expect(yamlEditor).toHaveValue(/scope: token/)
         await expect(yamlEditor).toHaveValue(/upos: VERB/)
 
         await page.getByRole('button', {name: 'Save', exact: true}).click()
         await expect(page.getByText('Règle sauvegardée.')).toBeVisible()
 
-        await expect(page.getByText('E2E created rule')).toBeVisible()
+        await page.getByRole('button', {name: 'visual', exact: true}).click()
+        await expect(page.getByLabel('Name')).toHaveValue('E2E created rule')
     })
 
     test('validates a rule draft and shows validation feedback', async ({page}) => {
