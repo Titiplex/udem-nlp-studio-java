@@ -34,7 +34,7 @@
         <failsafe.version>3.2.5</failsafe.version>
         <jacoco.version>0.8.12</jacoco.version>
 
-        <app.mainClass>org.titiplex.app.DesktopApp</app.mainClass>
+        <app.mainClass>org.titiplex.app.DesktopLauncher</app.mainClass>
         <cli.mainClass>org.titiplex.Main</cli.mainClass>
         <app.shadedName>nlp-studio-app-${project.version}-all.jar</app.shadedName>
         <cli.shadedName>nlp-studio-core-${project.version}-all.jar</cli.shadedName>

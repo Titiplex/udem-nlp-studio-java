@@ -10,7 +10,7 @@ Set-Location $RepoRoot
 
 $AppName = "NLP Studio"
 $Vendor = "Titiplex"
-$MainClass = "org.titiplex.app.DesktopApp"
+$MainClass = "org.titiplex.app.DesktopLauncher"
 
 Write-Host "==> Building desktop app with Maven"
 mvn -pl app -am -Pdesktop-prod clean package

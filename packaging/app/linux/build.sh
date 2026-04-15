@@ -8,7 +8,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$REPO_ROOT"
 
 APP_NAME="nlp-studio"
-MAIN_CLASS="org.titiplex.app.DesktopApp"
+MAIN_CLASS="org.titiplex.app.DesktopLauncher"
 INPUT_DIR="$REPO_ROOT/app/target"
 DEST_DIR="$REPO_ROOT/app/target/installer"
 
