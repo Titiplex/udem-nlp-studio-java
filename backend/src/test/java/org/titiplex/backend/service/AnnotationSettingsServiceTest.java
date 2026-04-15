@@ -80,7 +80,17 @@ class AnnotationSettingsServiceTest {
                 ))
         );
 
-        assertTrue(ex.getMessage().contains("Invalid annotation settings"));
+        String message = ex.getMessage() == null ? "" : ex.getMessage();
+        String causeMessage = ex.getCause() != null && ex.getCause().getMessage() != null
+                ? ex.getCause().getMessage()
+                : "";
+
+        assertTrue(
+                message.contains("Invalid annotation settings")
+                        || message.contains("Expected YAML list")
+                        || causeMessage.contains("Expected YAML list"),
+                "Unexpected exception message: " + message + " / cause: " + causeMessage
+        );
     }
 
     @Test

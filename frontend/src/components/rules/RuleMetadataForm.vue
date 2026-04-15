@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type {RuleDetail} from '../../bridge/desktopBridge'
 
-defineProps<{
+const props = defineProps<{
   modelValue: RuleDetail
 }>()
 
@@ -11,7 +11,7 @@ const emit = defineEmits<{
 
 function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
   emit('update:modelValue', {
-    ...($props.modelValue),
+    ...props.modelValue,
     [key]: value,
   })
 }

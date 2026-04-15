@@ -64,12 +64,26 @@ class WorkspaceExchangeServiceTest {
                 true,
                 10,
                 "demo",
-                Map.of("match", Map.of("has_segment", "DIR")),
+                Map.of(
+                        "match", Map.of("has_segment", "DIR"),
+                        "rewrite", Map.of(
+                                "split", Map.of(
+                                        "type", "suffix",
+                                        "suffixes", List.of("DIR")
+                                )
+                        )
+                ),
                 """
-                        - name: Correction sample
-                          scope: token
-                          match:
-                            has_segment: DIR
+                        rules:
+                          - name: Correction sample
+                            scope: token
+                            match:
+                              has_segment: DIR
+                            rewrite:
+                              split:
+                                type: suffix
+                                suffixes:
+                                  - DIR
                         """
         ));
 

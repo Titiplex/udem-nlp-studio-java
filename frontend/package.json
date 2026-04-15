@@ -11,10 +11,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "pretest:e2e": "playwright install chromium",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
-    "playwright:install": "playwright install --with-deps chromium"
+    "playwright:install": "playwright install chromium"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
@@ -29,8 +30,11 @@
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^25.0.1",
     "typescript": "^5.7.3",
-    "vite": "^6.0.5",
-    "vitest": "^4.1.2",
+    "vite": "^6.4.2",
+    "vitest": "^4.1.4",
     "vue-tsc": "^2.1.10"
+  },
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || >=24.0.0"
   }
 }
