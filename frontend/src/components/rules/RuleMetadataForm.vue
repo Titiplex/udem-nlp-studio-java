@@ -20,8 +20,9 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
 <template>
   <div class="meta-grid">
     <div class="field">
-      <label class="field-label">Name</label>
+      <label class="field-label" for="rule-name-input">Name</label>
       <input
+          id="rule-name-input"
           class="field-input"
           :value="modelValue.name"
           @input="patch('name', ($event.target as HTMLInputElement).value)"
@@ -29,8 +30,9 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
     </div>
 
     <div class="field">
-      <label class="field-label">Scope</label>
+      <label class="field-label" for="rule-scope-input">Scope</label>
       <input
+          id="rule-scope-input"
           class="field-input"
           :value="modelValue.scope"
           @input="patch('scope', ($event.target as HTMLInputElement).value)"
@@ -38,8 +40,9 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
     </div>
 
     <div class="field">
-      <label class="field-label">Priority</label>
+      <label class="field-label" for="rule-priority-input">Priority</label>
       <input
+          id="rule-priority-input"
           class="field-input"
           type="number"
           :value="modelValue.priority"
@@ -49,16 +52,18 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
 
     <div class="field checkbox-row">
       <input
+          id="rule-enabled-input"
           type="checkbox"
           :checked="modelValue.enabled"
           @change="patch('enabled', ($event.target as HTMLInputElement).checked)"
       />
-      <label class="field-label">Enabled</label>
+      <label class="field-label" for="rule-enabled-input">Enabled</label>
     </div>
 
     <div class="field full">
-      <label class="field-label">Description</label>
+      <label class="field-label" for="rule-description-input">Description</label>
       <textarea
+          id="rule-description-input"
           class="field-textarea"
           :value="modelValue.description"
           @input="patch('description', ($event.target as HTMLTextAreaElement).value)"
