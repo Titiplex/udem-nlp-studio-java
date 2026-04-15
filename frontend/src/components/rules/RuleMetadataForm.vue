@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue'
 import type {RuleDetail} from '../../bridge/desktopBridge'
 
 const props = defineProps<{
@@ -7,32 +6,13 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: RuleDetail]
+  patch: [value: Partial<RuleDetail>]
 }>()
 
-const localDraft = ref<RuleDetail>({
-  ...props.modelValue,
-})
-
-watch(
-    () => props.modelValue,
-    (next) => {
-      localDraft.value = {
-        ...next,
-      }
-    },
-    {immediate: true, deep: true},
-)
-
 function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
-  localDraft.value = {
-    ...localDraft.value,
+  emit('patch', {
     [key]: value,
-  }
-
-  emit('update:modelValue', {
-    ...localDraft.value,
-  })
+  } as Partial<RuleDetail>)
 }
 </script>
 
@@ -43,7 +23,7 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
       <input
           id="rule-name-input"
           class="field-input"
-          :value="localDraft.name"
+          :value="props.modelValue.name"
           @input="patch('name', ($event.target as HTMLInputElement).value)"
       />
     </div>
@@ -53,7 +33,7 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
       <input
           id="rule-scope-input"
           class="field-input"
-          :value="localDraft.scope"
+          :value="props.modelValue.scope"
           @input="patch('scope', ($event.target as HTMLInputElement).value)"
       />
     </div>
@@ -64,7 +44,7 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
           id="rule-priority-input"
           class="field-input"
           type="number"
-          :value="localDraft.priority"
+          :value="props.modelValue.priority"
           @input="patch('priority', Number(($event.target as HTMLInputElement).value))"
       />
     </div>
@@ -73,7 +53,7 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
       <input
           id="rule-enabled-input"
           type="checkbox"
-          :checked="localDraft.enabled"
+          :checked="props.modelValue.enabled"
           @change="patch('enabled', ($event.target as HTMLInputElement).checked)"
       />
       <label class="field-label" for="rule-enabled-input">Enabled</label>
@@ -84,7 +64,7 @@ function patch<K extends keyof RuleDetail>(key: K, value: RuleDetail[K]) {
       <textarea
           id="rule-description-input"
           class="field-textarea"
-          :value="localDraft.description"
+          :value="props.modelValue.description"
           @input="patch('description', ($event.target as HTMLTextAreaElement).value)"
       />
     </div>

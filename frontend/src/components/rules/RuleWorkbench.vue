@@ -85,7 +85,7 @@ onMounted(async () => {
 
       <RuleMetadataForm
           :model-value="store.draft"
-          @update:model-value="store.setDraft($event)"
+          @patch="store.patchDraft($event)"
       />
 
       <RuleEditorTabs
