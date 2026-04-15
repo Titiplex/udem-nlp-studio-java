@@ -4,16 +4,16 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.titiplex.backend.domain.rule.RuleDefinition;
+import org.titiplex.backend.domain.rule.RuleKind;
 import org.titiplex.backend.dto.*;
 import org.titiplex.backend.mapper.RuleMapper;
 import org.titiplex.backend.model.RuleEntity;
 import org.titiplex.backend.repository.RuleRepository;
 import org.titiplex.backend.repository.WorkspaceEntryRepository;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,18 +24,34 @@ public class WorkspaceExchangeService {
     private final WorkspaceEntryService workspaceEntryService;
     private final RuleService ruleService;
     private final RuleMapper ruleMapper;
+    private final AnnotationSettingsService annotationSettingsService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Yaml yamlReader;
+    private final Yaml yamlWriter;
 
     public WorkspaceExchangeService(WorkspaceEntryRepository workspaceEntryRepository,
                                     RuleRepository ruleRepository,
                                     WorkspaceEntryService workspaceEntryService,
                                     RuleService ruleService,
-                                    RuleMapper ruleMapper) {
+                                    RuleMapper ruleMapper,
+                                    AnnotationSettingsService annotationSettingsService) {
         this.workspaceEntryRepository = workspaceEntryRepository;
         this.ruleRepository = ruleRepository;
         this.workspaceEntryService = workspaceEntryService;
         this.ruleService = ruleService;
         this.ruleMapper = ruleMapper;
+        this.annotationSettingsService = annotationSettingsService;
+
+        this.yamlReader = new Yaml();
+
+        DumperOptions options = new DumperOptions();
+        options.setPrettyFlow(true);
+        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        options.setIndent(2);
+        options.setIndicatorIndent(1);
+        options.setWidth(160);
+
+        this.yamlWriter = new Yaml(options);
     }
 
     public TextExportDto exportData(WorkspaceExchangeRequestDto request) {
@@ -68,11 +84,28 @@ public class WorkspaceExchangeService {
                     "workspace-rules.yaml",
                     buildRulesYaml(listDetailedRules(request.ruleKinds(), request.onlyEnabledRules()))
             );
+            case "correction_rules_yaml" -> new TextExportDto(
+                    "workspace-correction-rules.yaml",
+                    buildRulesYaml(listDetailedRules(List.of("CORRECTION"), request.onlyEnabledRules()))
+            );
+            case "annotation_rules_yaml" -> new TextExportDto(
+                    "workspace-annotation-rules.yaml",
+                    buildRulesYaml(listDetailedRules(List.of("ANNOTATION"), request.onlyEnabledRules()))
+            );
+            case "annotation_settings_json" -> new TextExportDto(
+                    "workspace-annotation-settings.json",
+                    writePretty(annotationSettingsService.getSettings())
+            );
+            case "annotation_settings_yaml" -> new TextExportDto(
+                    "workspace-annotation-settings.yaml",
+                    buildAnnotationSettingsYaml(annotationSettingsService.getSettings())
+            );
             case "workspace_bundle_json" -> new TextExportDto(
                     "workspace-bundle.json",
                     writePretty(new WorkspaceDataBundleDto(
                             listDetailedEntries(),
-                            listDetailedRules(request.ruleKinds(), request.onlyEnabledRules())
+                            listDetailedRules(request.ruleKinds(), request.onlyEnabledRules()),
+                            request.includeAnnotationSettings() ? annotationSettingsService.getSettings() : null
                     ))
             );
             default -> throw new IllegalArgumentException("Unsupported export format: " + request.format());
@@ -82,7 +115,8 @@ public class WorkspaceExchangeService {
     public WorkspaceDataImportResultDto importData(String format,
                                                    String content,
                                                    boolean replaceExistingEntries,
-                                                   boolean replaceExistingRules) {
+                                                   boolean replaceExistingRules,
+                                                   boolean replaceAnnotationSettings) {
         String normalizedFormat = normalize(format);
         String trimmed = content == null ? "" : content.trim();
         if (trimmed.isBlank()) {
@@ -93,7 +127,14 @@ public class WorkspaceExchangeService {
             case "raw_text" -> importRawText(trimmed, replaceExistingEntries);
             case "entries_json" -> importEntriesJson(trimmed, replaceExistingEntries);
             case "rules_json" -> importRulesJson(trimmed, replaceExistingRules);
-            case "workspace_bundle_json" -> importBundleJson(trimmed, replaceExistingEntries, replaceExistingRules);
+            case "correction_rules_yaml" ->
+                    importRulesYaml(trimmed, replaceExistingRules, RuleKind.CORRECTION, "yaml_correction");
+            case "annotation_rules_yaml" ->
+                    importRulesYaml(trimmed, replaceExistingRules, RuleKind.ANNOTATION, "yaml_annotation");
+            case "annotation_settings_json" -> importAnnotationSettingsJson(trimmed, replaceAnnotationSettings);
+            case "annotation_settings_yaml" -> importAnnotationSettingsYaml(trimmed, replaceAnnotationSettings);
+            case "workspace_bundle_json" ->
+                    importBundleJson(trimmed, replaceExistingEntries, replaceExistingRules, replaceAnnotationSettings);
             default -> throw new IllegalArgumentException("Unsupported import format: " + format);
         };
     }
@@ -185,9 +226,106 @@ public class WorkspaceExchangeService {
         }
     }
 
+    private WorkspaceDataImportResultDto importRulesYaml(String content,
+                                                         boolean replaceExistingRules,
+                                                         RuleKind kind,
+                                                         String defaultSubtype) {
+        try {
+            Object loaded = yamlReader.load(content);
+            if (!(loaded instanceof List<?> list) || list.isEmpty()) {
+                throw new IllegalArgumentException("YAML rules import expects a non-empty YAML list.");
+            }
+
+            if (replaceExistingRules) {
+                ruleRepository.deleteAll();
+            }
+
+            int imported = 0;
+            for (Object item : list) {
+                if (!(item instanceof Map<?, ?> map)) {
+                    continue;
+                }
+
+                Map<String, Object> payload = deepStringKeyMap(map);
+                String name = String.valueOf(payload.getOrDefault("name", kind.name() + " imported rule"));
+                String scope = String.valueOf(payload.getOrDefault("scope", "token"));
+                String description = payload.get("description") == null ? "" : String.valueOf(payload.get("description"));
+                String rawYaml = yamlWriter.dump(List.of(payload));
+
+                ruleService.saveRule(new RuleDetailDto(
+                        null,
+                        name,
+                        kind,
+                        defaultSubtype,
+                        scope,
+                        true,
+                        100,
+                        description,
+                        payload,
+                        rawYaml
+                ));
+                imported++;
+            }
+
+            return new WorkspaceDataImportResultDto(
+                    0,
+                    imported,
+                    imported + " " + kind.name().toLowerCase(Locale.ROOT) + " rules imported from YAML."
+            );
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot import rules YAML: " + e.getMessage(), e);
+        }
+    }
+
+    private WorkspaceDataImportResultDto importAnnotationSettingsJson(String content,
+                                                                      boolean replaceAnnotationSettings) {
+        try {
+            AnnotationSettingsDto dto = objectMapper.readValue(content, AnnotationSettingsDto.class);
+            AnnotationSettingsDto source = replaceAnnotationSettings
+                    ? dto
+                    : mergeAnnotationSettings(annotationSettingsService.getSettings(), dto);
+
+            annotationSettingsService.saveSettings(source);
+
+            return new WorkspaceDataImportResultDto(
+                    0,
+                    0,
+                    "Annotation settings imported from JSON."
+            );
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot import annotation settings JSON: " + e.getMessage(), e);
+        }
+    }
+
+    private WorkspaceDataImportResultDto importAnnotationSettingsYaml(String content,
+                                                                      boolean replaceAnnotationSettings) {
+        try {
+            Object loaded = yamlReader.load(content);
+            if (!(loaded instanceof Map<?, ?> map)) {
+                throw new IllegalArgumentException("Annotation settings YAML must be an object.");
+            }
+
+            AnnotationSettingsDto dto = mapToAnnotationSettingsDto(deepStringKeyMap(map));
+            AnnotationSettingsDto source = replaceAnnotationSettings
+                    ? dto
+                    : mergeAnnotationSettings(annotationSettingsService.getSettings(), dto);
+
+            annotationSettingsService.saveSettings(source);
+
+            return new WorkspaceDataImportResultDto(
+                    0,
+                    0,
+                    "Annotation settings imported from YAML."
+            );
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot import annotation settings YAML: " + e.getMessage(), e);
+        }
+    }
+
     private WorkspaceDataImportResultDto importBundleJson(String content,
                                                           boolean replaceExistingEntries,
-                                                          boolean replaceExistingRules) {
+                                                          boolean replaceExistingRules,
+                                                          boolean replaceAnnotationSettings) {
         try {
             WorkspaceDataBundleDto bundle = objectMapper.readValue(content, WorkspaceDataBundleDto.class);
 
@@ -234,6 +372,13 @@ public class WorkspaceExchangeService {
                         defaultString(rule.rawYaml())
                 ));
                 importedRules++;
+            }
+
+            if (bundle.annotationSettings() != null) {
+                AnnotationSettingsDto merged = replaceAnnotationSettings
+                        ? bundle.annotationSettings()
+                        : mergeAnnotationSettings(annotationSettingsService.getSettings(), bundle.annotationSettings());
+                annotationSettingsService.saveSettings(merged);
             }
 
             return new WorkspaceDataImportResultDto(
@@ -291,16 +436,53 @@ public class WorkspaceExchangeService {
                 .collect(Collectors.joining("\n\n"));
     }
 
+    private String buildAnnotationSettingsYaml(AnnotationSettingsDto dto) {
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("posDefinitionsYaml", defaultString(dto.posDefinitionsYaml()));
+        root.put("featDefinitionsYaml", defaultString(dto.featDefinitionsYaml()));
+        root.put("lexiconsYaml", defaultString(dto.lexiconsYaml()));
+        root.put("extractorsYaml", defaultString(dto.extractorsYaml()));
+        root.put("glossMapYaml", defaultString(dto.glossMapYaml()));
+        return yamlWriter.dump(root);
+    }
+
+    private AnnotationSettingsDto mapToAnnotationSettingsDto(Map<String, Object> map) {
+        return new AnnotationSettingsDto(
+                stringValue(map.get("posDefinitionsYaml")),
+                stringValue(map.get("featDefinitionsYaml")),
+                stringValue(map.get("lexiconsYaml")),
+                stringValue(map.get("extractorsYaml")),
+                stringValue(map.get("glossMapYaml")),
+                "",
+                ""
+        );
+    }
+
+    private AnnotationSettingsDto mergeAnnotationSettings(AnnotationSettingsDto base, AnnotationSettingsDto incoming) {
+        return new AnnotationSettingsDto(
+                choose(base.posDefinitionsYaml(), incoming.posDefinitionsYaml()),
+                choose(base.featDefinitionsYaml(), incoming.featDefinitionsYaml()),
+                choose(base.lexiconsYaml(), incoming.lexiconsYaml()),
+                choose(base.extractorsYaml(), incoming.extractorsYaml()),
+                choose(base.glossMapYaml(), incoming.glossMapYaml()),
+                "",
+                ""
+        );
+    }
+
     private String buildEntriesCsv(List<EntryDetailDto> entries) {
         StringBuilder sb = new StringBuilder();
-        sb.append("id,documentOrder,rawChujText,rawGlossText,translation,correctedChujText,correctedGlossText,correctedTranslation,approved,conlluPreview\n");
+        sb.append("id,documentOrder,contextText,surfaceText,rawChujText,rawGlossText,translation,comments,correctedChujText,correctedGlossText,correctedTranslation,approved,conlluPreview\n");
 
         for (EntryDetailDto entry : entries) {
             sb.append(csv(entry.id() == null ? "" : entry.id().toString())).append(',')
                     .append(entry.documentOrder()).append(',')
+                    .append(csv(entry.contextText())).append(',')
+                    .append(csv(entry.surfaceText())).append(',')
                     .append(csv(entry.rawChujText())).append(',')
                     .append(csv(entry.rawGlossText())).append(',')
                     .append(csv(entry.translation())).append(',')
+                    .append(csv(entry.comments())).append(',')
                     .append(csv(entry.correctedChujText())).append(',')
                     .append(csv(entry.correctedGlossText())).append(',')
                     .append(csv(entry.correctedTranslation())).append(',')
@@ -321,12 +503,15 @@ public class WorkspaceExchangeService {
             String id = entry.id() == null ? UUID.randomUUID().toString() : entry.id().toString();
 
             sb.append("INSERT INTO workspace_entries ")
-                    .append("(id, document_order, raw_chuj_text, raw_gloss_text, translation, corrected_chuj_text, corrected_gloss_text, corrected_translation, approved, conllu_preview) VALUES (")
+                    .append("(id, document_order, context_text, surface_text, raw_chuj_text, raw_gloss_text, translation, comments, corrected_chuj_text, corrected_gloss_text, corrected_translation, approved, conllu_preview) VALUES (")
                     .append(sql(id)).append(", ")
                     .append(entry.documentOrder()).append(", ")
+                    .append(sql(entry.contextText())).append(", ")
+                    .append(sql(entry.surfaceText())).append(", ")
                     .append(sql(entry.rawChujText())).append(", ")
                     .append(sql(entry.rawGlossText())).append(", ")
                     .append(sql(entry.translation())).append(", ")
+                    .append(sql(entry.comments())).append(", ")
                     .append(sql(entry.correctedChujText())).append(", ")
                     .append(sql(entry.correctedGlossText())).append(", ")
                     .append(sql(entry.correctedTranslation())).append(", ")
@@ -335,6 +520,31 @@ public class WorkspaceExchangeService {
         }
 
         return sb.toString().trim();
+    }
+
+    private Map<String, Object> deepStringKeyMap(Map<?, ?> source) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (var entry : source.entrySet()) {
+            String key = String.valueOf(entry.getKey());
+            Object value = entry.getValue();
+
+            if (value instanceof Map<?, ?> subMap) {
+                out.put(key, deepStringKeyMap(subMap));
+            } else if (value instanceof List<?> list) {
+                List<Object> mapped = new ArrayList<>();
+                for (Object item : list) {
+                    if (item instanceof Map<?, ?> itemMap) {
+                        mapped.add(deepStringKeyMap(itemMap));
+                    } else {
+                        mapped.add(item);
+                    }
+                }
+                out.put(key, mapped);
+            } else {
+                out.put(key, value);
+            }
+        }
+        return out;
     }
 
     private String csv(String value) {
@@ -360,6 +570,14 @@ public class WorkspaceExchangeService {
 
     private String defaultString(String value) {
         return value == null ? "" : value;
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private String choose(String current, String incoming) {
+        return incoming == null || incoming.isBlank() ? defaultString(current) : incoming;
     }
 
     private <T> List<T> safeList(List<T> values) {

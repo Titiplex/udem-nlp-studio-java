@@ -7,6 +7,7 @@ public record WorkspaceExchangeRequestDto(
         boolean preferCorrected,
         boolean correctedOnly,
         List<String> ruleKinds,
-        boolean onlyEnabledRules
+        boolean onlyEnabledRules,
+        boolean includeAnnotationSettings
 ) {
 }

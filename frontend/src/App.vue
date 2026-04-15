@@ -5,6 +5,7 @@ import RuleWorkbench from './components/rules/RuleWorkbench.vue'
 import EntriesWorkbench from './components/entries/EntriesWorkbench.vue'
 import PreviewWorkbench from './components/preview/PreviewWorkbench.vue'
 import SettingsWorkbench from './components/settings/SettingsWorkbench.vue'
+import TopbarExchangeMenu from './components/shell/TopbarExchangeMenu.vue'
 import {useWorkspaceStore, type WorkspaceSection} from './stores/workspaceStore'
 
 const workspace = useWorkspaceStore()
@@ -44,9 +45,13 @@ onMounted(async () => {
 <template>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <h1>{{ appName }}</h1>
-        <p>Version {{ version }}</p>
+      <div class="topbar-left">
+        <div>
+          <h1>{{ appName }}</h1>
+          <p>Version {{ version }}</p>
+        </div>
+
+        <TopbarExchangeMenu/>
       </div>
 
       <div class="topbar-right">
@@ -90,13 +95,19 @@ onMounted(async () => {
 }
 
 .topbar {
-  padding: 16px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid #d1d5db;
   background: #ffffff;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
+}
+
+.topbar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .topbar h1 {
@@ -135,7 +146,7 @@ onMounted(async () => {
 .main-layout {
   display: grid;
   grid-template-columns: 220px 1fr;
-  min-height: calc(100vh - 81px);
+  min-height: calc(100vh - 95px);
 }
 
 .sidebar {
@@ -162,5 +173,17 @@ onMounted(async () => {
 
 .content {
   padding: 24px;
+}
+
+@media (max-width: 1100px) {
+  .topbar {
+    flex-direction: column;
+  }
+
+  .topbar-right {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 </style>

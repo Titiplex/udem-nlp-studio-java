@@ -4,6 +4,7 @@ import java.util.List;
 
 public record WorkspaceDataBundleDto(
         List<EntryDetailDto> entries,
-        List<RuleDetailDto> rules
+        List<RuleDetailDto> rules,
+        AnnotationSettingsDto annotationSettings
 ) {
 }

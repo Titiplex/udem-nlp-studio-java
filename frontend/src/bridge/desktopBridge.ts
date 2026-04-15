@@ -130,12 +130,14 @@ export interface WorkspaceExchangeRequest {
     correctedOnly: boolean
     ruleKinds: string[]
     onlyEnabledRules: boolean
+    includeAnnotationSettings: boolean
 }
 
 export interface WorkspaceImportFileRequest {
     format: string
     replaceExistingEntries: boolean
     replaceExistingRules: boolean
+    replaceAnnotationSettings: boolean
 }
 
 export interface WorkspaceDataImportResult {

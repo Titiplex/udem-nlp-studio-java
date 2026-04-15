@@ -163,7 +163,8 @@ public class AppBridge {
                     dto.format(),
                     content,
                     dto.replaceExistingEntries(),
-                    dto.replaceExistingRules()
+                    dto.replaceExistingRules(),
+                    dto.replaceAnnotationSettings()
             );
 
             return write(BridgeResponse.ok(result));
@@ -286,7 +287,9 @@ public class AppBridge {
 
         return switch (normalized) {
             case "raw_text" -> List.of("*.txt");
-            case "entries_json", "rules_json", "workspace_bundle_json" -> List.of("*.json");
+            case "entries_json", "rules_json", "workspace_bundle_json", "annotation_settings_json" -> List.of("*.json");
+            case "rules_yaml", "correction_rules_yaml", "annotation_rules_yaml", "annotation_settings_yaml" ->
+                    List.of("*.yaml", "*.yml");
             default -> List.of("*.*");
         };
     }
