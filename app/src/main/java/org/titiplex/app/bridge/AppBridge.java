@@ -2,9 +2,11 @@ package org.titiplex.app.bridge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
+import org.titiplex.app.service.FileDialogService;
 import org.titiplex.backend.dto.*;
 import org.titiplex.backend.service.*;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -17,21 +19,27 @@ public class AppBridge {
     private final RuleSchemaService ruleSchemaService;
     private final RuleEditorService ruleEditorService;
     private final WorkspaceEntryService workspaceEntryService;
+    private final WorkspaceExchangeService workspaceExchangeService;
     private final AnnotationSettingsService annotationSettingsService;
     private final AnnotationConfigComposerService annotationConfigComposerService;
+    private final FileDialogService fileDialogService;
 
     public AppBridge(RuleService ruleService,
                      RuleSchemaService ruleSchemaService,
                      RuleEditorService ruleEditorService,
                      WorkspaceEntryService workspaceEntryService,
+                     WorkspaceExchangeService workspaceExchangeService,
                      AnnotationSettingsService annotationSettingsService,
-                     AnnotationConfigComposerService annotationConfigComposerService) {
+                     AnnotationConfigComposerService annotationConfigComposerService,
+                     FileDialogService fileDialogService) {
         this.ruleService = ruleService;
         this.ruleSchemaService = ruleSchemaService;
         this.ruleEditorService = ruleEditorService;
         this.workspaceEntryService = workspaceEntryService;
+        this.workspaceExchangeService = workspaceExchangeService;
         this.annotationSettingsService = annotationSettingsService;
         this.annotationConfigComposerService = annotationConfigComposerService;
+        this.fileDialogService = fileDialogService;
     }
 
     public String ping() {
@@ -108,6 +116,59 @@ public class AppBridge {
             return write(BridgeResponse.ok(workspaceEntryService.exportConllu(dto)));
         } catch (Exception e) {
             return write(BridgeResponse.error("CoNLL-U export failed: " + e.getMessage()));
+        }
+    }
+
+    public String generateWorkspaceExport(String payloadJson) {
+        try {
+            WorkspaceExchangeRequestDto dto = objectMapper.readValue(payloadJson, WorkspaceExchangeRequestDto.class);
+            return write(BridgeResponse.ok(workspaceExchangeService.exportData(dto)));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Workspace export generation failed: " + e.getMessage()));
+        }
+    }
+
+    public String saveWorkspaceExport(String payloadJson) {
+        try {
+            WorkspaceExchangeRequestDto dto = objectMapper.readValue(payloadJson, WorkspaceExchangeRequestDto.class);
+            TextExportDto export = workspaceExchangeService.exportData(dto);
+
+            String path = fileDialogService.saveTextFile(
+                    "Save export",
+                    export.fileName(),
+                    export.content(),
+                    extensionsForExport(export.fileName())
+            );
+
+            return write(BridgeResponse.ok(path));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Save export failed: " + e.getMessage()));
+        }
+    }
+
+    public String importWorkspaceFromFile(String payloadJson) {
+        try {
+            WorkspaceImportFileRequestDto dto = objectMapper.readValue(payloadJson, WorkspaceImportFileRequestDto.class);
+
+            String content = fileDialogService.openTextFile(
+                    "Open import file",
+                    extensionsForFormat(dto.format())
+            );
+
+            if (content == null || content.isBlank()) {
+                return write(BridgeResponse.error("No file selected or file empty."));
+            }
+
+            WorkspaceDataImportResultDto result = workspaceExchangeService.importData(
+                    dto.format(),
+                    content,
+                    dto.replaceExistingEntries(),
+                    dto.replaceExistingRules()
+            );
+
+            return write(BridgeResponse.ok(result));
+        } catch (Exception e) {
+            return write(BridgeResponse.error("Import from file failed: " + e.getMessage()));
         }
     }
 
@@ -209,6 +270,25 @@ public class AppBridge {
         } catch (Exception e) {
             return write(BridgeResponse.error("Correction failed: " + e.getMessage()));
         }
+    }
+
+    private List<String> extensionsForExport(String fileName) {
+        if (fileName.endsWith(".json")) return List.of("*.json");
+        if (fileName.endsWith(".csv")) return List.of("*.csv");
+        if (fileName.endsWith(".sql")) return List.of("*.sql");
+        if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) return List.of("*.yaml", "*.yml");
+        if (fileName.endsWith(".conllu")) return List.of("*.conllu");
+        return List.of("*.txt");
+    }
+
+    private List<String> extensionsForFormat(String format) {
+        String normalized = format == null ? "" : format.trim().toLowerCase();
+
+        return switch (normalized) {
+            case "raw_text" -> List.of("*.txt");
+            case "entries_json", "rules_json", "workspace_bundle_json" -> List.of("*.json");
+            default -> List.of("*.*");
+        };
     }
 
     private String write(Object value) {

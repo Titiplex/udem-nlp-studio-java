@@ -12,6 +12,7 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.titiplex.app.bridge.AppBridge;
+import org.titiplex.app.service.FileDialogService;
 import org.titiplex.app.ui.BridgeInstaller;
 
 import java.net.URL;
@@ -33,6 +34,9 @@ public class DesktopApp extends Application {
         WebEngine engine = webView.getEngine();
 
         AppBridge bridge = context.getBean(AppBridge.class);
+        FileDialogService fileDialogService = context.getBean(FileDialogService.class);
+        fileDialogService.setOwner(stage);
+
         BridgeInstaller.install(engine, bridge);
 
         URL url = getClass().getResource("/webapp/index.html");

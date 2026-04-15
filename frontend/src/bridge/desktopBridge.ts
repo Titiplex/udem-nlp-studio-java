@@ -84,12 +84,9 @@ export interface EntrySummary {
 export interface EntryDetail {
     id: string | null
     documentOrder: number
-    contextText: string
-    surfaceText: string
     rawChujText: string
     rawGlossText: string
     translation: string
-    comments: string
     correctedChujText: string
     correctedGlossText: string
     correctedTranslation: string
@@ -125,6 +122,26 @@ export interface BatchCorrectionResult {
 export interface WorkspaceExportRequest {
     preferCorrected: boolean
     correctedOnly: boolean
+}
+
+export interface WorkspaceExchangeRequest {
+    format: string
+    preferCorrected: boolean
+    correctedOnly: boolean
+    ruleKinds: string[]
+    onlyEnabledRules: boolean
+}
+
+export interface WorkspaceImportFileRequest {
+    format: string
+    replaceExistingEntries: boolean
+    replaceExistingRules: boolean
+}
+
+export interface WorkspaceDataImportResult {
+    importedEntries: number
+    importedRules: number
+    summary: string
 }
 
 export interface TextExport {
@@ -164,6 +181,12 @@ export interface DesktopBridge {
     exportRawText(payloadJson: string): string
 
     exportConllu(payloadJson: string): string
+
+    generateWorkspaceExport(payloadJson: string): string
+
+    saveWorkspaceExport(payloadJson: string): string
+
+    importWorkspaceFromFile(payloadJson: string): string
 
     getAnnotationSettings(): string
 
