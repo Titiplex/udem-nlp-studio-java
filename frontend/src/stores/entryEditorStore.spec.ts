@@ -63,6 +63,18 @@ describe('entryEditorStore', () => {
                     fileName: 'workspace.conllu',
                     content: '# sent_id = 1\n# text = Ix-naq',
                 }),
+            generateWorkspaceExport: () =>
+                ok({
+                    fileName: 'workspace-bundle.json',
+                    content: '{"entries":[],"rules":[]}',
+                }),
+            saveWorkspaceExport: () => ok('/tmp/workspace-bundle.json'),
+            importWorkspaceFromFile: () =>
+                ok({
+                    importedEntries: 1,
+                    importedRules: 1,
+                    summary: '1 entries and 1 rules imported from bundle.',
+                }),
             listRuleDescriptors: () => ok([]),
             listRuleSchemas: () => ok([]),
             getRuleSchema: () => ok(null),
@@ -85,7 +97,7 @@ describe('entryEditorStore', () => {
                     correctedTranslation: 'Il gagne.',
                     approved: false,
                     conlluPreview: '# sent_id = 1\n# text = Ix-naq',
-                })
+                }),
         }
     })
 

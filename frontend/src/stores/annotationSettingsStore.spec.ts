@@ -24,6 +24,9 @@ describe('annotationSettingsStore', () => {
             runCorrectionOnAll: () => ok(null),
             exportRawText: () => ok(null),
             exportConllu: () => ok(null),
+            generateWorkspaceExport: () => ok(null),
+            saveWorkspaceExport: () => ok(null),
+            importWorkspaceFromFile: () => ok(null),
 
             getAnnotationSettings: () => ok({
                 posDefinitionsYaml: '- VERB',
