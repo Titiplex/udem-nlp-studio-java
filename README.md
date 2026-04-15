@@ -214,6 +214,9 @@ mvn clean verify -Dskip.frontend=true
 cd frontend
 npm ci
 npm run typecheck
+npm run playwright:install
+npm run test
+npm run test:e2e
 npm run test:coverage
 npm run build
 ````
