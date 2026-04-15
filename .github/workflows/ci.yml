@@ -3,13 +3,14 @@ name: CI
 on:
   push:
     branches:
-      - vueApp
+      - master
+      - main
+      - develop
+      - '**'
   pull_request:
-    branches:
-      - vueApp
 
 jobs:
-  build:
+  backend-core-app:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,15 +21,55 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
           cache: maven
+
+      - name: Build and test Maven modules
+        run: mvn -B clean verify -Dskip.frontend=true
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: |
+            core/target/site/jacoco
+            backend/target/site/jacoco
+            app/target/site/jacoco
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: npm
+          node-version: '22'
+          cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Build
-        run: mvn -pl app -am clean package
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage

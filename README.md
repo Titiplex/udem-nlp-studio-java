@@ -208,6 +208,14 @@ Run all tests:
 
 ````shell
 mvn test
+# or
+mvn clean verify -Dskip.frontend=true
+# then
+cd frontend
+npm ci
+npm run typecheck
+npm run test:coverage
+npm run build
 ````
 
 Run the full project build:

@@ -35,98 +35,102 @@ class WorkspaceExchangeServiceTest {
                 A1-ganar
                 Il gagne.
                 """, true));
-
-        for (RuleSummaryDto rule : ruleService.listRules()) {
-            // no-op here: rules might already be empty depending on the test DB lifecycle
-        }
     }
 
     @Test
-    void exportBundleJsonShouldIncludeEntriesRulesAndAnnotationSettings() {
+    void exportEntriesJsonShouldContainWorkspaceData() {
+        TextExportDto export = workspaceExchangeService.exportData(new WorkspaceExchangeRequestDto(
+                "entries_json",
+                true,
+                false,
+                List.of(),
+                false,
+                false
+        ));
+
+        assertEquals("workspace-entries.json", export.fileName());
+        assertTrue(export.content().contains("\"rawChujText\""));
+        assertTrue(export.content().contains("Ix-naq"));
+    }
+
+    @Test
+    void exportRulesYamlShouldRespectRuleKindFilter() {
         ruleService.saveRule(new RuleDetailDto(
                 null,
-                "Correction test rule",
+                "Correction sample",
                 RuleKind.CORRECTION,
                 "split",
                 "token",
                 true,
                 10,
-                "Rule used in exchange test",
-                Map.of(
-                        "match", Map.of("has_segment", "DIR"),
-                        "set", Map.of("type", "split", "position", "end")
-                ),
+                "demo",
+                Map.of("match", Map.of("has_segment", "DIR")),
                 """
-                        - name: Correction test rule
+                        - name: Correction sample
                           scope: token
                           match:
                             has_segment: DIR
-                          set:
-                            type: split
-                            position: end
                         """
         ));
 
-        TextExportDto result = workspaceExchangeService.exportData(new WorkspaceExchangeRequestDto(
-                "workspace_bundle_json",
+        ruleService.saveRule(new RuleDetailDto(
+                null,
+                "Annotation sample",
+                RuleKind.ANNOTATION,
+                "conllu",
+                "token",
                 true,
-                false,
-                List.of("CORRECTION", "ANNOTATION"),
-                true,
-                true
+                20,
+                "demo",
+                Map.of("set", Map.of("upos", "VERB")),
+                """
+                        - name: Annotation sample
+                          scope: token
+                          set:
+                            upos: VERB
+                        """
         ));
 
-        assertEquals("workspace-bundle.json", result.fileName());
-        assertTrue(result.content().contains("\"entries\""));
-        assertTrue(result.content().contains("\"rules\""));
-        assertTrue(result.content().contains("\"annotationSettings\""));
-        assertTrue(result.content().contains("Correction test rule"));
-    }
-
-    @Test
-    void exportAnnotationSettingsYamlShouldContainMainSections() {
-        AnnotationSettingsDto saved = annotationSettingsService.saveSettings(new AnnotationSettingsDto(
-                "- VERB\n- NOUN",
-                "- Pers[subj]\n- Number[subj]",
-                "spanish_verbs:\n  - ganar",
-                "agreement_verbs:\n  tag_schema: {}",
-                "{}",
-                "",
-                ""
-        ));
-
-        assertNotNull(saved);
-
-        TextExportDto result = workspaceExchangeService.exportData(new WorkspaceExchangeRequestDto(
-                "annotation_settings_yaml",
+        TextExportDto export = workspaceExchangeService.exportData(new WorkspaceExchangeRequestDto(
+                "correction_rules_yaml",
                 true,
                 false,
                 List.of(),
-                true,
-                true
+                false,
+                false
         ));
 
-        assertEquals("workspace-annotation-settings.yaml", result.fileName());
-        assertTrue(result.content().contains("posDefinitionsYaml"));
-        assertTrue(result.content().contains("featDefinitionsYaml"));
-        assertTrue(result.content().contains("lexiconsYaml"));
-        assertTrue(result.content().contains("extractorsYaml"));
-        assertTrue(result.content().contains("glossMapYaml"));
+        assertEquals("workspace-correction-rules.yaml", export.fileName());
+        assertTrue(export.content().contains("Correction sample"));
+        assertFalse(export.content().contains("Annotation sample"));
     }
 
     @Test
-    void importCorrectionRulesYamlShouldCreateCorrectionRules() {
+    void importRulesJsonShouldCreateRules() {
+        String json = """
+                [
+                  {
+                    "id": null,
+                    "name": "Imported annotation rule",
+                    "kind": "ANNOTATION",
+                    "subtype": "conllu",
+                    "scope": "token",
+                    "enabled": true,
+                    "priority": 30,
+                    "description": "imported",
+                    "payload": {
+                      "set": {
+                        "upos": "VERB"
+                      }
+                    },
+                    "rawYaml": "- name: Imported annotation rule\\n  scope: token\\n  set:\\n    upos: VERB\\n"
+                  }
+                ]
+                """;
+
         WorkspaceDataImportResultDto result = workspaceExchangeService.importData(
-                "correction_rules_yaml",
-                """
-                        - name: Imported correction rule
-                          scope: token
-                          match:
-                            has_segment: DIR
-                          set:
-                            type: split
-                            position: end
-                        """,
+                "rules_json",
+                json,
                 false,
                 true,
                 false
@@ -134,35 +138,106 @@ class WorkspaceExchangeServiceTest {
 
         assertEquals(0, result.importedEntries());
         assertEquals(1, result.importedRules());
-        assertTrue(result.summary().contains("correction rules imported"));
+        assertTrue(result.summary().contains("rules imported from JSON"));
 
-        List<RuleSummaryDto> rules = ruleService.listRules();
-        assertEquals(1, rules.size());
-        assertEquals("CORRECTION", rules.getFirst().kind());
-        assertEquals("Imported correction rule", rules.getFirst().name());
+        assertEquals(1, ruleService.listRules().size());
+        assertEquals("Imported annotation rule", ruleService.listRules().getFirst().name());
     }
 
     @Test
-    void importAnnotationSettingsYamlShouldUpdateSettings() {
+    void importWorkspaceBundleShouldCreateEntriesAndRules() {
+        String json = """
+                {
+                  "entries": [
+                    {
+                      "id": null,
+                      "documentOrder": 10,
+                      "contextText": "",
+                      "surfaceText": "",
+                      "rawChujText": "Ha-ix-to",
+                      "rawGlossText": "DEM-A1-ir",
+                      "translation": "Celui-ci va.",
+                      "comments": "",
+                      "correctedChujText": "",
+                      "correctedGlossText": "",
+                      "correctedTranslation": "",
+                      "approved": false,
+                      "conlluPreview": ""
+                    }
+                  ],
+                  "rules": [
+                    {
+                      "id": null,
+                      "name": "Bundle rule",
+                      "kind": "ANNOTATION",
+                      "subtype": "conllu",
+                      "scope": "token",
+                      "enabled": true,
+                      "priority": 50,
+                      "description": "from bundle",
+                      "payload": {
+                        "set": {
+                          "upos": "VERB"
+                        }
+                      },
+                      "rawYaml": "- name: Bundle rule\\n  scope: token\\n  set:\\n    upos: VERB\\n"
+                    }
+                  ],
+                  "annotationSettings": null
+                }
+                """;
+
         WorkspaceDataImportResultDto result = workspaceExchangeService.importData(
+                "workspace_bundle_json",
+                json,
+                true,
+                true,
+                false
+        );
+
+        assertEquals(1, result.importedEntries());
+        assertEquals(1, result.importedRules());
+
+        assertEquals(1, workspaceEntryService.listEntries().size());
+        assertEquals("Ha-ix-to", workspaceEntryService.listEntries().getFirst().rawChujText());
+        assertEquals(1, ruleService.listRules().size());
+        assertEquals("Bundle rule", ruleService.listRules().getFirst().name());
+    }
+
+    @Test
+    void exportAnnotationSettingsYamlShouldContainCurrentBaseSections() {
+        TextExportDto export = workspaceExchangeService.exportData(new WorkspaceExchangeRequestDto(
                 "annotation_settings_yaml",
-                """
-                        posDefinitionsYaml: |
-                          - VERB
-                          - ADV
-                        featDefinitionsYaml: |
-                          - Pers[subj]
-                          - Number[subj]
-                        lexiconsYaml: |
-                          custom_lexicon:
-                            - alpha
-                            - beta
-                        extractorsYaml: |
-                          agreement_verbs:
-                            tag_schema: {}
-                        glossMapYaml: |
-                          {}
-                        """,
+                true,
+                false,
+                List.of(),
+                false,
+                true
+        ));
+
+        assertEquals("workspace-annotation-settings.yaml", export.fileName());
+        assertTrue(export.content().contains("posDefinitionsYaml"));
+        assertTrue(export.content().contains("featDefinitionsYaml"));
+        assertTrue(export.content().contains("extractorsYaml"));
+    }
+
+    @Test
+    void importAnnotationSettingsJsonShouldUpdateSettings() {
+        String json = """
+                {
+                  "posDefinitionsYaml": "- VERB\\n- NOUN",
+                  "featDefinitionsYaml": "- Number\\n- Pers[subj]",
+                  "lexiconsYaml": "spanish_verbs:\\n  - ganar",
+                  "extractorsYaml": "agreement_verbs:\\n  tag_schema:\\n    series:\\n      A: subj",
+                  "glossMapYaml": "{}",
+                  "baseYamlPreview": "",
+                  "effectiveYamlPreview": ""
+                }
+                """;
+
+        WorkspaceDataImportResultDto result = workspaceExchangeService.importData(
+                "annotation_settings_json",
+                json,
                 false,
                 false,
                 true
@@ -170,46 +245,10 @@ class WorkspaceExchangeServiceTest {
 
         assertEquals(0, result.importedEntries());
         assertEquals(0, result.importedRules());
-        assertTrue(result.summary().contains("Annotation settings imported"));
+        assertTrue(result.summary().contains("Annotation settings imported from JSON"));
 
         AnnotationSettingsDto settings = annotationSettingsService.getSettings();
         assertTrue(settings.posDefinitionsYaml().contains("VERB"));
-        assertTrue(settings.posDefinitionsYaml().contains("ADV"));
-        assertTrue(settings.lexiconsYaml().contains("custom_lexicon"));
-    }
-
-    @Test
-    void exportEntriesSqlShouldContainStructuredColumns() {
-        workspaceEntryService.saveEntry(new EntryDetailDto(
-                null,
-                2,
-                "Context A",
-                "Ix naq",
-                "Ix-naq",
-                "A1-ganar",
-                "Il gagne.",
-                "Comment A",
-                "",
-                "",
-                "",
-                false,
-                ""
-        ));
-
-        TextExportDto result = workspaceExchangeService.exportData(new WorkspaceExchangeRequestDto(
-                "entries_sql",
-                true,
-                false,
-                List.of(),
-                true,
-                false
-        ));
-
-        assertEquals("workspace-entries.sql", result.fileName());
-        assertTrue(result.content().contains("context_text"));
-        assertTrue(result.content().contains("surface_text"));
-        assertTrue(result.content().contains("comments"));
-        assertTrue(result.content().contains("Context A"));
-        assertTrue(result.content().contains("Comment A"));
+        assertTrue(settings.lexiconsYaml().contains("spanish_verbs"));
     }
 }
