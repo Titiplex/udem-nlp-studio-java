@@ -1,0 +1,55 @@
+def:
+  pos:
+    - VERB
+    - DET
+    - X
+  feats:
+    - Pers[subj]
+    - Number[subj]
+
+lexicons:
+  spanish_verbs:
+    - ganar
+    - ir
+
+extractors:
+  agreement_verbs:
+    tag_schema:
+      series:
+        A: "subj"
+        B: "obj"
+      values:
+        person: [ "1", "2", "3" ]
+        number:
+          suffix: "PL"
+
+gloss_map:
+  pos:
+    - DEM: DET
+
+rules:
+  - name: verb agreement
+    scope: token
+    priority: 50
+    match:
+      gloss:
+        in_lexicon: spanish_verbs
+    set:
+      upos: VERB
+      extract:
+        - type: scan_agreement
+          extractor: agreement_verbs
+          into: agreement_verbs
+      feats_template:
+        Pers[subj]: "{agreement_verbs.A.person}"
+        Number[subj]: "{agreement_verbs.A.number}"
+
+  - name: demonstrative
+    scope: token
+    priority: 10
+    match:
+      gloss:
+        in_list:
+          - DEM
+    set:
+      upos: DET

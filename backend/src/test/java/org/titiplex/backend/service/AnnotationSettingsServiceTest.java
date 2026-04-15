@@ -7,9 +7,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.titiplex.backend.BackendApplication;
 import org.titiplex.backend.dto.AnnotationSettingsDto;
 import org.titiplex.backend.repository.AnnotationSettingsRepository;
-import org.titiplex.backend.repository.RuleRepository;
-import org.titiplex.backend.repository.WorkspaceEntryRepository;
-import org.titiplex.conllu.AnnotationConfig;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,44 +17,31 @@ class AnnotationSettingsServiceTest {
     private AnnotationSettingsService annotationSettingsService;
 
     @Autowired
-    private AnnotationConfigComposerService annotationConfigComposerService;
-
-    @Autowired
     private AnnotationSettingsRepository annotationSettingsRepository;
-
-    @Autowired
-    private RuleRepository ruleRepository;
-
-    @Autowired
-    private WorkspaceEntryRepository workspaceEntryRepository;
 
     @BeforeEach
     void setUp() {
-        workspaceEntryRepository.deleteAll();
-        ruleRepository.deleteAll();
         annotationSettingsRepository.deleteAll();
     }
 
     @Test
-    void shouldLoadDefaultSettings() {
+    void getSettingsShouldCreateDefaultSingletonWhenMissing() {
         AnnotationSettingsDto dto = annotationSettingsService.getSettings();
 
         assertNotNull(dto);
         assertTrue(dto.posDefinitionsYaml().contains("VERB"));
+        assertTrue(dto.featDefinitionsYaml().contains("Pers[subj]"));
         assertTrue(dto.lexiconsYaml().contains("spanish_verbs"));
-        assertFalse(dto.baseYamlPreview().isBlank());
+        assertTrue(dto.baseYamlPreview().contains("def:"));
+        assertTrue(annotationSettingsRepository.findById(AnnotationSettingsService.SINGLETON_ID).isPresent());
     }
 
     @Test
-    void shouldSaveCustomSettings() {
+    void saveSettingsShouldPersistAndReturnUpdatedBaseYaml() {
         AnnotationSettingsDto saved = annotationSettingsService.saveSettings(new AnnotationSettingsDto(
                 "- VERB\n- NOUN",
-                "- Pers[subj]\n- Number[subj]",
-                """
-                        spanish_verbs:
-                          - ganar
-                          - ir
-                        """.trim(),
+                "- Number\n- Pers[subj]",
+                "spanish_verbs:\n  - ganar",
                 """
                         agreement_verbs:
                           tag_schema:
@@ -67,46 +51,46 @@ class AnnotationSettingsServiceTest {
                               person: [ "1", "2", "3" ]
                               number:
                                 suffix: "PL"
-                        """.trim(),
+                        """,
                 "{}",
                 "",
                 ""
         ));
 
         assertTrue(saved.posDefinitionsYaml().contains("VERB"));
-        assertTrue(saved.baseYamlPreview().contains("spanish_verbs"));
+        assertTrue(saved.baseYamlPreview().contains("lexicons:"));
+        assertTrue(saved.baseYamlPreview().contains("extractors:"));
+
+        AnnotationSettingsDto reloaded = annotationSettingsService.getSettings();
+        assertTrue(reloaded.lexiconsYaml().contains("ganar"));
     }
 
     @Test
-    void composerShouldBuildExecutableAnnotationConfigFromSavedSettings() {
-        annotationSettingsService.saveSettings(new AnnotationSettingsDto(
-                "- VERB\n- NOUN",
-                "- Pers[subj]\n- Number[subj]",
-                """
-                        spanish_verbs:
-                          - ganar
-                        """.trim(),
-                """
-                        agreement_verbs:
-                          tag_schema:
-                            series:
-                              A: "subj"
-                            values:
-                              person: [ "1", "2", "3" ]
-                              number:
-                                suffix: "PL"
-                        """.trim(),
-                "{}",
-                "",
-                ""
-        ));
+    void saveSettingsShouldRejectInvalidYamlShapes() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> annotationSettingsService.saveSettings(new AnnotationSettingsDto(
+                        "not-a-list",
+                        "- Number",
+                        "spanish_verbs:\n  - ganar",
+                        "agreement_verbs:\n  tag_schema: {}",
+                        "{}",
+                        "",
+                        ""
+                ))
+        );
 
-        AnnotationConfig config = annotationConfigComposerService.buildAnnotationConfig();
+        assertTrue(ex.getMessage().contains("Invalid annotation settings"));
+    }
 
-        assertNotNull(config);
-        assertTrue(config.posDefinitions().contains("VERB"));
-        assertTrue(config.featDefinitions().contains("Pers[subj]"));
-        assertTrue(config.lexiconRegistry().contains("spanish_verbs", "ganar"));
-        assertTrue(config.extractors().containsKey("agreement_verbs"));
+    @Test
+    void buildBaseDocumentShouldExposeExpectedSections() {
+        var baseDocument = annotationSettingsService.buildBaseDocument();
+
+        assertTrue(baseDocument.containsKey("def"));
+        assertTrue(baseDocument.containsKey("lexicons"));
+        assertTrue(baseDocument.containsKey("extractors"));
+        assertTrue(baseDocument.containsKey("gloss_map"));
+        assertTrue(baseDocument.containsKey("rules"));
     }
 }
