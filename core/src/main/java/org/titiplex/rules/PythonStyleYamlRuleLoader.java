@@ -8,16 +8,14 @@ import java.util.regex.Pattern;
 
 public final class PythonStyleYamlRuleLoader {
 
-    @SuppressWarnings("unchecked")
     public List<CorrectionRule> load(InputStream inputStream) {
         Yaml yaml = new Yaml();
-        Map<String, Object> data = yaml.load(inputStream);
-        if (data == null) {
+        Object loaded = yaml.load(inputStream);
+        List<Map<String, Object>> rawRules = extractRawRules(loaded);
+
+        if (rawRules.isEmpty()) {
             return List.of();
         }
-
-        List<Map<String, Object>> rawRules =
-                (List<Map<String, Object>>) data.getOrDefault("rules", List.of());
 
         List<CorrectionRule> out = new ArrayList<>();
 
@@ -50,6 +48,63 @@ public final class PythonStyleYamlRuleLoader {
         }
 
         return out;
+    }
+
+    private static List<Map<String, Object>> extractRawRules(Object loaded) {
+        if (loaded == null) {
+            return List.of();
+        }
+
+        if (loaded instanceof Map<?, ?> map) {
+            Map<String, Object> normalized = RuleYamlSupport.map(map);
+            Object rules = normalized.get("rules");
+
+            if (rules != null) {
+                return toRuleMapList(rules);
+            }
+
+            if (looksLikeRuleDefinition(normalized)) {
+                return List.of(normalized);
+            }
+
+            return List.of();
+        }
+
+        if (loaded instanceof List<?> list) {
+            return toRuleMapList(list);
+        }
+
+        return List.of();
+    }
+
+    private static List<Map<String, Object>> toRuleMapList(Object raw) {
+        List<Map<String, Object>> out = new ArrayList<>();
+
+        if (raw instanceof Map<?, ?> map) {
+            Map<String, Object> normalized = RuleYamlSupport.map(map);
+            if (!normalized.isEmpty()) {
+                out.add(normalized);
+            }
+            return out;
+        }
+
+        if (raw instanceof List<?> list) {
+            for (Object item : list) {
+                Map<String, Object> normalized = RuleYamlSupport.map(item);
+                if (!normalized.isEmpty()) {
+                    out.add(normalized);
+                }
+            }
+        }
+
+        return out;
+    }
+
+    private static boolean looksLikeRuleDefinition(Map<String, Object> map) {
+        return map.containsKey("name")
+                || map.containsKey("match")
+                || map.containsKey("rewrite")
+                || map.containsKey("merge");
     }
 
     private static void loadDeleteRules(String id,

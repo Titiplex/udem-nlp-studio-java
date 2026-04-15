@@ -7,6 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.titiplex.backend.BackendApplication;
 import org.titiplex.backend.domain.rule.RuleKind;
 import org.titiplex.backend.dto.*;
+import org.titiplex.backend.repository.AnnotationSettingsRepository;
+import org.titiplex.backend.repository.RuleRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -28,8 +30,17 @@ class WorkspaceExchangeServiceTest {
     @Autowired
     private AnnotationSettingsService annotationSettingsService;
 
+    @Autowired
+    private RuleRepository ruleRepository;
+
+    @Autowired
+    private AnnotationSettingsRepository annotationSettingsRepository;
+
     @BeforeEach
     void setUp() {
+        ruleRepository.deleteAll();
+        annotationSettingsRepository.deleteAll();
+
         workspaceEntryService.importEntries(new WorkspaceImportRequestDto("""
                 Ix-naq
                 A1-ganar

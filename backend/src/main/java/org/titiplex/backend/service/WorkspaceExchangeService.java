@@ -14,7 +14,6 @@ import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class WorkspaceExchangeService {
@@ -231,9 +230,9 @@ public class WorkspaceExchangeService {
                                                          RuleKind kind,
                                                          String defaultSubtype) {
         try {
-            Object loaded = yamlReader.load(content);
-            if (!(loaded instanceof List<?> list) || list.isEmpty()) {
-                throw new IllegalArgumentException("YAML rules import expects a non-empty YAML list.");
+            List<Map<String, Object>> rules = extractRulePayloads(content, Map.of());
+            if (rules.isEmpty()) {
+                throw new IllegalArgumentException("YAML rules import expects at least one rule.");
             }
 
             if (replaceExistingRules) {
@@ -241,12 +240,7 @@ public class WorkspaceExchangeService {
             }
 
             int imported = 0;
-            for (Object item : list) {
-                if (!(item instanceof Map<?, ?> map)) {
-                    continue;
-                }
-
-                Map<String, Object> payload = deepStringKeyMap(map);
+            for (Map<String, Object> payload : rules) {
                 String name = String.valueOf(payload.getOrDefault("name", kind.name() + " imported rule"));
                 String scope = String.valueOf(payload.getOrDefault("scope", "token"));
                 String description = payload.get("description") == null ? "" : String.valueOf(payload.get("description"));
@@ -430,10 +424,90 @@ public class WorkspaceExchangeService {
     }
 
     private String buildRulesYaml(List<RuleDetailDto> rules) {
-        return rules.stream()
-                .map(rule -> defaultString(rule.rawYaml()).trim())
-                .filter(text -> !text.isBlank())
-                .collect(Collectors.joining("\n\n"));
+        List<Map<String, Object>> mergedRules = new ArrayList<>();
+
+        for (RuleDetailDto rule : rules) {
+            try {
+                mergedRules.addAll(extractRulePayloads(
+                        defaultString(rule.rawYaml()),
+                        rule.payload() == null ? Map.of() : rule.payload()
+                ));
+            } catch (Exception e) {
+                Map<String, Object> fallbackPayload = rule.payload() == null ? Map.of() : deepStringKeyMap(rule.payload());
+                if (!fallbackPayload.isEmpty()) {
+                    mergedRules.add(fallbackPayload);
+                } else {
+                    throw new IllegalStateException(
+                            "Cannot export YAML for rule '" + defaultString(rule.name()) + "': " + e.getMessage(),
+                            e
+                    );
+                }
+            }
+        }
+
+        return mergedRules.isEmpty() ? "" : yamlWriter.dump(mergedRules);
+    }
+
+    private List<Map<String, Object>> extractRulePayloads(String rawYaml, Map<String, Object> fallbackPayload) {
+        String normalized = defaultString(rawYaml).trim();
+        if (!normalized.isBlank()) {
+            Object loaded = yamlReader.load(normalized);
+            List<Map<String, Object>> extracted = normalizeLoadedRuleYaml(loaded);
+            if (!extracted.isEmpty()) {
+                return extracted;
+            }
+        }
+
+        if (fallbackPayload != null && !fallbackPayload.isEmpty()) {
+            return List.of(deepStringKeyMap(fallbackPayload));
+        }
+
+        return List.of();
+    }
+
+    private List<Map<String, Object>> normalizeLoadedRuleYaml(Object loaded) {
+        List<Map<String, Object>> out = new ArrayList<>();
+
+        if (loaded == null) {
+            return out;
+        }
+
+        if (loaded instanceof List<?> list) {
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    out.add(deepStringKeyMap(map));
+                }
+            }
+            return out;
+        }
+
+        if (loaded instanceof Map<?, ?> map) {
+            Map<String, Object> normalized = deepStringKeyMap(map);
+            Object rulesObj = normalized.get("rules");
+
+            if (rulesObj instanceof List<?> list) {
+                for (Object item : list) {
+                    if (item instanceof Map<?, ?> itemMap) {
+                        out.add(deepStringKeyMap(itemMap));
+                    }
+                }
+                return out;
+            }
+
+            if (looksLikeRuleDefinition(normalized)) {
+                out.add(normalized);
+            }
+        }
+
+        return out;
+    }
+
+    private boolean looksLikeRuleDefinition(Map<String, Object> map) {
+        return map.containsKey("name")
+                || map.containsKey("match")
+                || map.containsKey("set")
+                || map.containsKey("rewrite")
+                || map.containsKey("merge");
     }
 
     private String buildAnnotationSettingsYaml(AnnotationSettingsDto dto) {

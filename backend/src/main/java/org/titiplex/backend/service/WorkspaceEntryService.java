@@ -324,20 +324,32 @@ public class WorkspaceEntryService {
     }
 
     private List<CorrectionRule> loadCorrectionRules() {
-        String yaml = ruleRepository.findByKindOrderByPriorityAscNameAsc(RuleKind.CORRECTION).stream()
-                .filter(RuleEntity::isEnabled)
-                .map(RuleEntity::getRawYaml)
-                .filter(raw -> raw != null && !raw.isBlank())
-                .reduce("", (left, right) -> left + "\n" + right)
-                .trim();
+        List<CorrectionRule> out = new ArrayList<>();
+        YamlRuleLoader loader = new YamlRuleLoader();
 
-        if (yaml.isBlank()) {
-            return List.of();
+        for (RuleEntity entity : ruleRepository.findByKindOrderByPriorityAscNameAsc(RuleKind.CORRECTION)) {
+            if (!entity.isEnabled()) {
+                continue;
+            }
+
+            String rawYaml = defaultString(entity.getRawYaml()).trim();
+            if (rawYaml.isBlank()) {
+                continue;
+            }
+
+            try {
+                out.addAll(loader.load(
+                        new ByteArrayInputStream(rawYaml.getBytes(StandardCharsets.UTF_8))
+                ));
+            } catch (Exception e) {
+                throw new IllegalStateException(
+                        "Cannot load correction rule '" + defaultString(entity.getName()) + "': " + e.getMessage(),
+                        e
+                );
+            }
         }
 
-        return new YamlRuleLoader().load(
-                new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))
-        );
+        return out;
     }
 
     private List<RawBlock> parseRawBlocks(String rawText) {

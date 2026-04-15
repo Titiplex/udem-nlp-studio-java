@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.titiplex.backend.BackendApplication;
 import org.titiplex.backend.domain.rule.RuleKind;
 import org.titiplex.backend.dto.*;
+import org.titiplex.backend.repository.AnnotationSettingsRepository;
 import org.titiplex.backend.repository.RuleRepository;
 import org.titiplex.backend.repository.WorkspaceEntryRepository;
 
@@ -30,10 +31,14 @@ class WorkspaceEntryServiceTest {
     @Autowired
     private RuleService ruleService;
 
+    @Autowired
+    private AnnotationSettingsRepository annotationSettingsRepository;
+
     @BeforeEach
     void setUp() {
         workspaceEntryRepository.deleteAll();
         ruleRepository.deleteAll();
+        annotationSettingsRepository.deleteAll();
     }
 
     @Test
