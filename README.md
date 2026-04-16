@@ -81,7 +81,7 @@ core/target/nlp-studio-core-0.1.0-all.jar
 1. Prepare CoNLL-U from an input document
 
 ````shell
-java -cp core/target/nlp-studio-core-0.1.0.jar org.titiplex.Main prepare input.docx correction.yaml annotation.yaml output.conllu
+java -cp core/target/nlp-studio-core-0.1.0-all.jar org.titiplex.Main prepare input.docx correction.yaml annotation.yaml output.conllu
 ````
 
 This command:
