@@ -42,8 +42,8 @@ public final class ParityService {
         return out;
     }
 
-    public void writeCorrectedDocx(InputStream in, Path outDocx) throws IOException {
-        new CorrectedDocxWriter().write(outDocx, correct(in));
+    public void writeCorrectedDocx(Path sourcePath, InputStream in, Path outDocx) throws IOException {
+        new CorrectedDocxWriter().write(sourcePath, outDocx, correct(in));
     }
 
     public void writeConllu(InputStream in, Path outConllu) throws IOException {

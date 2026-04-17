@@ -211,6 +211,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
-annotation.yaml
-correction.yaml

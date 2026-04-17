@@ -49,6 +49,7 @@ public final class Main {
         Path rulesYaml = Path.of(args[2]);
         Path posYaml = Path.of(args[3]);
         Path outputConllu = Path.of(args[4]);
+
         ParityService service = serviceFor(inputPath, rulesYaml, posYaml);
         try (FileInputStream in = new FileInputStream(inputPath.toFile())) {
             service.writeConllu(in, outputConllu);
@@ -63,9 +64,10 @@ public final class Main {
         Path inputPath = Path.of(args[1]);
         Path rulesYaml = Path.of(args[2]);
         Path outputDocx = Path.of(args[3]);
+
         ParityService service = serviceFor(inputPath, rulesYaml, null);
         try (FileInputStream in = new FileInputStream(inputPath.toFile())) {
-            service.writeCorrectedDocx(in, outputDocx);
+            service.writeCorrectedDocx(inputPath, in, outputDocx);
         }
     }
 
@@ -77,6 +79,7 @@ public final class Main {
         Path inputPath = Path.of(args[1]);
         Path rulesYaml = Path.of(args[2]);
         Path outputTxt = Path.of(args[3]);
+
         ParityService service = serviceFor(inputPath, rulesYaml, null);
         try (FileInputStream in = new FileInputStream(inputPath.toFile())) {
             service.writeStats(in, outputTxt);
@@ -84,16 +87,21 @@ public final class Main {
     }
 
     private static ParityService serviceFor(Path inputPath, Path rulesYaml, Path posYaml) throws IOException {
-        BlockReader reader = inputPath.toString().toLowerCase().endsWith(".docx") ? new DocxReader() : new RawTextReader();
+        BlockReader reader = inputPath.toString().toLowerCase().endsWith(".docx")
+                ? new DocxReader()
+                : new RawTextReader();
+
         YamlRuleLoader ruleLoader = new YamlRuleLoader();
         RuleEngine ruleEngine;
         try (FileInputStream ruleIn = new FileInputStream(rulesYaml.toFile())) {
             ruleEngine = new RuleEngine(ruleLoader.load(ruleIn));
         }
+
         AnnotationConfig annotationConfig = new AnnotationConfig();
         if (posYaml != null) {
             annotationConfig = new AnnotationConfigLoader().load(posYaml);
         }
+
         return new ParityService(reader, ruleEngine, annotationConfig);
     }
 
